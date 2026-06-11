@@ -1,0 +1,398 @@
+// KAWSAY RIPUY — The Journey of Living
+// An interactive 3D environment in three universes.
+import * as THREE from 'three';
+import gsap from 'gsap';
+import { buildRoom, buildSilence, buildBreak, buildReturn, buildFinale } from './worlds.js';
+import { Soundscape } from './audio.js';
+import { WORDS } from './words.js';
+
+// ---------------------------------------------------------------------------
+// Tiny event bus — worlds emit story beats, main.js turns them into narration.
+// ---------------------------------------------------------------------------
+const events = {
+  handlers: {},
+  on(name, fn) { (this.handlers[name] ||= []).push(fn); },
+  emit(name, data) { (this.handlers[name] || []).forEach(fn => fn(data)); },
+};
+
+// ---------------------------------------------------------------------------
+// Renderer / camera
+// ---------------------------------------------------------------------------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 400);
+const EYE = 1.65;
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+scene.add(ambient);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---------------------------------------------------------------------------
+// UI helpers
+// ---------------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const subtitleEl = $('subtitle'), hintEl = $('hint'), chapterEl = $('chapter'),
+      fadeEl = $('fade'), trackerEl = $('word-tracker'), finaleEl = $('finale-text');
+
+let subtitleTimer = null;
+const subtitleQueue = [];
+let subtitleBusy = false;
+
+function say(text, seconds = 5) {
+  subtitleQueue.push({ text, seconds });
+  if (!subtitleBusy) nextSubtitle();
+}
+function nextSubtitle() {
+  const item = subtitleQueue.shift();
+  if (!item) { subtitleBusy = false; subtitleEl.classList.remove('visible'); return; }
+  subtitleBusy = true;
+  subtitleEl.innerHTML = item.text;
+  subtitleEl.classList.add('visible');
+  clearTimeout(subtitleTimer);
+  subtitleTimer = setTimeout(() => {
+    subtitleEl.classList.remove('visible');
+    setTimeout(nextSubtitle, 600);
+  }, item.seconds * 1000);
+}
+
+function setChapter(text) {
+  chapterEl.classList.remove('visible');
+  setTimeout(() => { chapterEl.textContent = text; chapterEl.classList.add('visible'); }, 600);
+}
+function setHint(text) {
+  if (!text) { hintEl.classList.remove('visible'); return; }
+  hintEl.innerHTML = text;
+  hintEl.classList.add('visible');
+}
+
+// word tracker UI
+trackerEl.innerHTML = WORDS.map((w, i) => `<div class="word" id="w-${i}">${w.q}</div>`).join('');
+
+// ---------------------------------------------------------------------------
+// Player controls — drag to look, WASD / arrows to walk.
+// ---------------------------------------------------------------------------
+const player = {
+  pos: new THREE.Vector3(0, 0, 3),
+  yaw: 0, pitch: 0,
+  keys: {},
+  enabled: false,
+};
+
+document.addEventListener('keydown', e => { player.keys[e.code] = true; });
+document.addEventListener('keyup', e => { player.keys[e.code] = false; });
+
+let dragging = false, lastX = 0, lastY = 0, dragDist = 0;
+renderer.domElement.addEventListener('pointerdown', e => {
+  dragging = true; dragDist = 0; lastX = e.clientX; lastY = e.clientY;
+});
+window.addEventListener('pointermove', e => {
+  if (!dragging || !player.enabled) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  dragDist += Math.abs(dx) + Math.abs(dy);
+  lastX = e.clientX; lastY = e.clientY;
+  player.yaw -= dx * 0.004;
+  player.pitch = THREE.MathUtils.clamp(player.pitch - dy * 0.003, -1.2, 1.2);
+});
+window.addEventListener('pointerup', e => {
+  const wasClick = dragDist < 8;
+  dragging = false;
+  if (wasClick && player.enabled) handleClick(e);
+});
+
+function movePlayer(dt) {
+  if (!player.enabled || !currentWorld) return;
+  const speed = 4.2;
+  const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const move = new THREE.Vector3();
+  if (player.keys.KeyW || player.keys.ArrowUp) move.add(fwd);
+  if (player.keys.KeyS || player.keys.ArrowDown) move.sub(fwd);
+  if (player.keys.KeyA || player.keys.ArrowLeft) move.sub(right);
+  if (player.keys.KeyD || player.keys.ArrowRight) move.add(right);
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed * dt);
+    player.pos.add(move);
+    const b = currentWorld.bounds;
+    player.pos.x = THREE.MathUtils.clamp(player.pos.x, b.minX, b.maxX);
+    player.pos.z = THREE.MathUtils.clamp(player.pos.z, b.minZ, b.maxZ);
+  }
+  camera.position.set(player.pos.x, EYE, player.pos.z);
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = player.yaw;
+  camera.rotation.x = player.pitch;
+}
+
+// ---------------------------------------------------------------------------
+// Raycast interaction
+// ---------------------------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+function handleClick(e) {
+  if (!currentWorld) return;
+  const ndc = new THREE.Vector2(
+    (e.clientX / window.innerWidth) * 2 - 1,
+    -(e.clientY / window.innerHeight) * 2 + 1
+  );
+  raycaster.setFromCamera(ndc, camera);
+  raycaster.far = 14;
+  for (const item of currentWorld.interactables) {
+    if (item.requiresPortals && !portalsOpen) continue;
+    const hits = raycaster.intersectObject(item.mesh, true);
+    if (hits.length > 0) { item.onInteract(); return; }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// World management
+// ---------------------------------------------------------------------------
+const sound = new Soundscape();
+let currentWorld = null;
+let currentName = '';
+let portalsOpen = false;
+let roomWorld = null; // kept so portal state persists
+const collected = new Set();
+let finaleStarted = false;
+
+function fadeTo(black, ms = 1200) {
+  return new Promise(res => {
+    fadeEl.style.transition = `opacity ${ms}ms ease`;
+    fadeEl.classList.toggle('dark', black);
+    setTimeout(res, ms);
+  });
+}
+
+async function switchWorld(name) {
+  await fadeTo(true);
+  sound.stopAll(1);
+
+  if (currentWorld) scene.remove(currentWorld.group);
+
+  let world;
+  if (name === 'room') {
+    if (!roomWorld) roomWorld = buildRoom(events);
+    world = roomWorld;
+    if (portalsOpen) world.showPortals();
+  }
+  else if (name === 'silence') world = buildSilence(events);
+  else if (name === 'break') world = buildBreak(events);
+  else if (name === 'return') world = buildReturn(events);
+  else if (name === 'finale') world = buildFinale();
+
+  scene.add(world.group);
+  scene.fog = world.fog;
+  scene.background = world.background;
+  ambient.intensity = world.ambient;
+
+  player.pos.copy(world.playerStart);
+  player.yaw = 0; player.pitch = 0;
+  camera.position.set(player.pos.x, EYE, player.pos.z);
+
+  currentWorld = world;
+  currentName = name;
+  await fadeTo(false);
+
+  // per-world entry narration + sound
+  if (name === 'room') {
+    setChapter('The Room — One Night in Rural Peru');
+    sound.startRoomTension();
+    trackerEl.classList.remove('visible');
+    if (!portalsOpen) {
+      say('His clomp signaled that he would soon enter my room.', 6);
+      say('The ironing board I used as a desk felt on the verge of collapsing.', 6);
+      setHint('Drag to look &nbsp;·&nbsp; W A S D to walk &nbsp;·&nbsp; Click objects to remember');
+    } else {
+      setHint('Click a portal to enter a universe');
+    }
+  } else if (name === 'silence') {
+    setChapter('Universe 1 — The Silence (What Was)');
+    sound.startColdWind();
+    say('The boy who learned to disappear.', 5);
+    say('Stoicism. Dominance. The rejection of anything tender.', 6);
+    setHint('The doors here do not open &nbsp;·&nbsp; Press R to return to the room');
+  } else if (name === 'break') {
+    setChapter('Universe 2 — The Break (What Could Have Been)');
+    sound.startGlitch();
+    say('A world that never let him arrive.', 5);
+    say('This universe does not linger. It is a glimpse — a warning, and an act of grief.', 7);
+    setHint('Do not stay long &nbsp;·&nbsp; Press R to return to the room');
+    // The Break ejects you — it is a glimpse, not a home.
+    setTimeout(() => {
+      if (currentName === 'break') {
+        say('You cannot stay here. No one could.', 5);
+        setTimeout(() => { if (currentName === 'break') switchWorld('room'); }, 4000);
+      }
+    }, 50000);
+  } else if (name === 'return') {
+    setChapter('Universe 3 — The Return (What Is)');
+    sound.startAndeanWarmth();
+    trackerEl.classList.add('visible');
+    say('The boy who chose the language. The culture. The grandmother baking chuta.', 7);
+    say('Six Quechua words float in this valley. Gather them.', 6);
+    setHint('Click the floating words to gather them &nbsp;·&nbsp; Press R to return');
+  } else if (name === 'finale') {
+    setChapter('');
+    setHint('');
+    trackerEl.classList.remove('visible');
+    sound.finaleChord();
+    runFinale();
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyR' && ['silence', 'break', 'return'].includes(currentName) && !finaleStarted) {
+    switchWorld('room');
+  }
+  // Exhibition docent controls: jump directly between chapters.
+  if (finaleStarted || !player.enabled) return;
+  if (e.code === 'Digit0') switchWorld('room');
+  if (e.code === 'Digit1') { portalsOpen = true; switchWorld('silence'); }
+  if (e.code === 'Digit2') { portalsOpen = true; switchWorld('break'); }
+  if (e.code === 'Digit3') { portalsOpen = true; switchWorld('return'); }
+});
+
+// hooks for installation control software / automated testing
+window.__kawsay = { events, switchWorld: name => switchWorld(name) };
+
+// ---------------------------------------------------------------------------
+// Story beats
+// ---------------------------------------------------------------------------
+events.on('desk', () => {
+  say('I pressed my hand hard against the paper, planning my Quechua lessons.', 6);
+  say('<i>“¡¿Qué estupidez haces?! Those dialects you learn are useless,”</i> my father said — despite being a Quechua speaker himself.', 8);
+  sound.footsteps(4, 0.65);
+});
+events.on('chicote', () => {
+  say('The chicote — an Andean leather whip from his Quechuan uncle.', 6);
+  say('Anything other than quietness would guarantee dozens of hits. <i>Cobarde. Imbécil. Estúpido.</i>', 8);
+});
+events.on('lamp', () => {
+  say('A kerosene lamp. An adobe house in rural Peru.', 5);
+  say('The night of my mother’s miscarriage. My father, paralyzed by grief and fear. Silence where words should have been.', 9);
+  say('From that night, three possible Mathias emerge.', 6);
+});
+events.on('mirror', () => {
+  if (portalsOpen) { say('What does it take to break that mirror?', 5); return; }
+  portalsOpen = true;
+  sound.footsteps(5, 0.55);
+  say('He mirrored his own father. I was meant to mirror him.', 7);
+  say('This project asks: what does it take to break that mirror?', 7);
+  setTimeout(() => {
+    roomWorld.showPortals();
+    say('Three doors. Three versions of one life. Choose.', 7);
+    setHint('Click a portal to enter a universe');
+  }, 7000);
+});
+events.on('enterUniverse', name => switchWorld(name));
+
+events.on('silenceDoor', () => {
+  say('Closed. Like every word he never said.', 5);
+});
+events.on('silenceAvatar', () => {
+  say('He never speaks Quechua again.', 5);
+  say('He is safe — and completely lost.', 6);
+});
+
+events.on('breakAvatar', () => {
+  say('The boy who broke under the pressure. Half-rendered. Unfinished.', 7);
+  say('A grief for the version of me that almost was.', 6);
+});
+events.on('breakLetter', () => {
+  say('The Stanford acceptance never came. The violence at home continued.', 7);
+});
+
+events.on('kitchen', () => {
+  say('We baked sweet bread — <i>chuta</i> — while learning new Quechua vocabulary.', 7);
+  say('Those words let me escape from harassment, and took me under their wing at my lowest point.', 8);
+});
+events.on('returnAvatar', () => {
+  say('Masculinity here is not absence of feeling — it is presence.', 7);
+  say('To become someone your ancestors couldn’t have imagined, without erasing who they were.', 8);
+});
+
+events.on('wordCollected', ({ word, index }) => {
+  collected.add(index);
+  sound.chime(collected.size - 1);
+  document.getElementById(`w-${index}`)?.classList.add('found');
+  say(`<b style="color:#c9a227">${word.q}</b> — ${word.en}`, 4);
+  if (collected.size === WORDS.length && !finaleStarted) {
+    finaleStarted = true;
+    say('The words are all here now. Look up.', 6);
+    setTimeout(() => switchWorld('finale'), 6500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Finale sequence
+// ---------------------------------------------------------------------------
+function runFinale() {
+  player.enabled = false;
+  // cinematic: slow pull back and tilt up into the sky
+  const camState = { y: EYE, z: 6, pitch: 0 };
+  camera.position.set(0, camState.y, camState.z);
+  camera.rotation.set(0, 0, 0);
+  gsap.to(camState, {
+    y: 9, z: 16, pitch: 0.55, duration: 26, ease: 'power1.inOut',
+    onUpdate: () => {
+      camera.position.set(0, camState.y, camState.z);
+      camera.rotation.x = camState.pitch;
+    },
+  });
+
+  const lines = [
+    'A woman who loses her husband is called a widow.',
+    'A man who loses his wife is called a widower.',
+    'A child who loses their parents is called an orphan.',
+    'But do you know why there is no word for parents who lose their children?',
+    'It is because there is no word that could ever express such sorrow.',
+    '— · —',
+    'Dad, my dearest Quechua people —',
+    '<span class="final-quechua">Musqusqaykimanta astawan karutaraq chayasaqku.</span>',
+    'We’ll get farther than you ever dreamed.',
+  ];
+  finaleEl.innerHTML = '';
+  let t = 2500;
+  lines.forEach((line, i) => {
+    setTimeout(() => {
+      finaleEl.innerHTML = `<p class="visible">${line}</p>`;
+      if (i === lines.length - 1) {
+        setTimeout(() => {
+          finaleEl.innerHTML += `<p class="visible" style="margin-top:3rem; font-size:0.85rem; letter-spacing:0.35em; color:#888;">KAWSAY RIPUY — THE JOURNEY OF LIVING</p>`;
+        }, 5000);
+      }
+    }, t);
+    t += i === 5 ? 3000 : 5200;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+$('title-screen').addEventListener('click', async () => {
+  sound.init(); // user gesture unlocks audio
+  $('title-screen').classList.add('hidden');
+  setTimeout(() => $('title-screen').remove(), 1600);
+  player.enabled = true;
+  await switchWorld('room');
+  sound.footsteps(4, 0.8);
+}, { once: true });
+
+const clock = new THREE.Clock();
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (currentWorld) currentWorld.update(dt);
+  movePlayer(dt);
+  renderer.render(scene, camera);
+}
+loop();

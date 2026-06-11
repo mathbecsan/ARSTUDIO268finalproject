@@ -1,0 +1,16 @@
+{
+  "name": "kawsay-ripuy",
+  "version": "1.0.0",
+  "description": "KAWSAY RIPUY — The Journey of Living. Interactive 3D environment.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "three": "^0.184.0",
+    "vite": "^8.0.16"
+  }
+}
