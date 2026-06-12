@@ -1,15 +1,20 @@
-// The Mathias avatar — one humanized figure, three renderings.
+// The Mathias avatar — one humanized figure, several renderings.
 // U1 "The Silence": grey, head bowed, rigid, weight pulled inward.
 // U2 "The Break":   half-rendered wireframe, flickering, unfinished.
-// U3 "The Return":  warm skin, woven poncho + chullo, breathing and gently swaying.
+// U3 "The Return":  the boy himself — curly dark hair, open red-and-black
+//                   plaid flannel over a dark tee, blue jeans, black sneakers.
+// "elder":          the grandmother — woven lliclla shawl, long skirt, grey bun.
 //
 // Style DNA: handcrafted Andean magical realism — faceted, matte, flat-shaded,
 // like a carved retablo figure that has learned to breathe.
+//
+// The avatar exposes userData.setAction(name) for film direction:
+//   idle | still | walk | dance | write | freeze | fear
 import * as THREE from 'three';
 
-const SKIN = 0xb5805a;
-const SKIN_SHADOW = 0x8a5e40;
-const HAIR = 0x140d08;
+const SKIN = 0xc59a6f;
+const SKIN_SHADOW = 0x96704c;
+const HAIR = 0x16100a;
 
 // Andean textile pattern (terracotta / gold / deep-red bands with diamonds & zigzags)
 function textileTexture() {
@@ -19,7 +24,6 @@ function textileTexture() {
   const bands = ['#a3402f', '#c96f4a', '#c9a227', '#3a7a5a', '#5a2a2a', '#c96f4a', '#a3402f'];
   const bh = 256 / bands.length;
   bands.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * bh, 256, bh + 1); });
-  // diamonds on the gold band
   x.fillStyle = '#f0e6d2';
   for (let i = 0; i < 12; i++) {
     const cx = 10 + i * 22, cy = 2.5 * bh;
@@ -27,7 +31,6 @@ function textileTexture() {
     x.moveTo(cx, cy - 9); x.lineTo(cx + 9, cy); x.lineTo(cx, cy + 9); x.lineTo(cx - 9, cy);
     x.closePath(); x.fill();
   }
-  // zigzag on a red band
   x.strokeStyle = '#e8c87a'; x.lineWidth = 3; x.beginPath();
   for (let i = 0; i <= 256; i += 16) {
     const y = 0.5 * bh + (i / 16 % 2 === 0 ? -6 : 6);
@@ -36,6 +39,29 @@ function textileTexture() {
   x.stroke();
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// Buffalo-check plaid (red / black) for the flannel shirt.
+function plaidTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = '#b22a1d';
+  x.fillRect(0, 0, 256, 256);
+  const cell = 32;
+  x.fillStyle = 'rgba(22,16,12,0.55)';
+  for (let i = 0; i < 256; i += cell * 2) x.fillRect(i, 0, cell, 256); // vertical bands
+  for (let j = 0; j < 256; j += cell * 2) x.fillRect(0, j, 256, cell); // horizontal bands
+  // faint weave lines
+  x.strokeStyle = 'rgba(0,0,0,0.12)';
+  x.lineWidth = 1;
+  for (let i = 0; i < 256; i += 8) {
+    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 2);
   return tex;
 }
 
@@ -50,33 +76,161 @@ function segment(mat, { topR, botR, len }) {
   return pivot;
 }
 
+// ---------------------------------------------------------------------------
+// THE ELDER — the grandmother. Woven shawl, long skirt, silver bun.
+// ---------------------------------------------------------------------------
+function createElder() {
+  const group = new THREE.Group();
+  const flat = { flatShading: true };
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xb5805a, roughness: 0.62, ...flat });
+  const skinShadowMat = new THREE.MeshStandardMaterial({ color: 0x8a5e40, roughness: 0.7, ...flat });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x9a958c, roughness: 0.9, ...flat });
+  const skirtMat = new THREE.MeshStandardMaterial({ color: 0x5a2a30, roughness: 0.9, ...flat });
+  const shawlMat = new THREE.MeshStandardMaterial({ map: textileTexture(), roughness: 0.82, ...flat });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x16100b, roughness: 0.4 });
+
+  const hips = new THREE.Group();
+  hips.position.y = 0.92;
+  group.add(hips);
+
+  // long skirt (pollera)
+  const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.95, 12, 1), skirtMat);
+  skirt.position.y = -0.45;
+  skirt.castShadow = true;
+  hips.add(skirt);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.5, 10), skirtMat);
+  torso.position.y = 0.32;
+  torso.castShadow = true;
+  hips.add(torso);
+
+  // lliclla — the woven shawl over the shoulders
+  const shawl = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 10, 1, true), shawlMat);
+  shawl.position.y = 0.42;
+  shawl.castShadow = true;
+  hips.add(shawl);
+
+  const shoulders = new THREE.Group();
+  shoulders.position.y = 0.56;
+  hips.add(shoulders);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.1, 8), skinMat);
+  neck.position.y = 0.08;
+  shoulders.add(neck);
+
+  const headPivot = new THREE.Group();
+  headPivot.position.y = 0.14;
+  shoulders.add(headPivot);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 18, 16), skinMat);
+  head.scale.set(0.92, 1.06, 0.95);
+  head.position.y = 0.1;
+  head.castShadow = true;
+  headPivot.add(head);
+
+  // silver hair + bun
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.137, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.9), hairMat);
+  hair.scale.set(0.95, 1.05, 1);
+  hair.position.y = 0.11;
+  headPivot.add(hair);
+  const bun = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), hairMat);
+  bun.position.set(0, 0.16, -0.12);
+  headPivot.add(bun);
+
+  const eyeGeo = new THREE.SphereGeometry(0.016, 8, 8);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-0.042, 0.1, 0.112);
+  eyeR.position.set(0.042, 0.1, 0.112);
+  headPivot.add(eyeL, eyeR);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.045, 6), skinShadowMat);
+  nose.rotation.x = Math.PI / 2.1;
+  nose.position.set(0, 0.075, 0.125);
+  headPivot.add(nose);
+
+  // arms — sleeves of the skirt fabric, hands of skin
+  function makeArm(side) {
+    const upper = segment(skirtMat, { topR: 0.05, botR: 0.045, len: 0.3 });
+    const fore = segment(skinMat, { topR: 0.042, botR: 0.038, len: 0.27 });
+    fore.position.y = -0.3;
+    upper.add(fore);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.046, 10, 8), skinShadowMat);
+    hand.scale.set(1, 1.2, 0.7);
+    hand.position.y = -0.27;
+    fore.add(hand);
+    upper.position.set(side * 0.21, 0.04, 0);
+    upper.rotation.z = side * 0.1;
+    shoulders.add(upper);
+    return { upper, fore };
+  }
+  const armL = makeArm(-1);
+  const armR = makeArm(1);
+  armL.upper.rotation.x = 0.2; armR.upper.rotation.x = 0.2;
+
+  const state = { t: Math.random() * 10, blink: 0 };
+  group.userData.setAction = () => {};
+  group.userData.joints = { hips, shoulders, headPivot, torso, armL, armR };
+  group.userData.update = (dt) => {
+    state.t += dt;
+    const t = state.t;
+    const breath = Math.sin(t * 1.3) * 0.015;
+    torso.scale.set(1 + breath, 1 + breath * 0.4, 1 + breath);
+    const sway = Math.sin(t * 0.7);
+    hips.rotation.z = sway * 0.03;
+    headPivot.rotation.y = Math.sin(t * 0.4) * 0.14;
+    headPivot.rotation.x = 0.06 + Math.sin(t * 0.6) * 0.03;
+    armL.upper.rotation.x = 0.2 + Math.sin(t * 1.1) * 0.06;
+    armR.upper.rotation.x = 0.2 - Math.sin(t * 1.1) * 0.06;
+    state.blink -= dt;
+    if (state.blink < 0) state.blink = 3 + Math.random() * 3;
+    const blinking = state.blink < 0.12;
+    eyeL.scale.y = eyeR.scale.y = blinking ? 0.15 : 1;
+  };
+  return group;
+}
+
+// ---------------------------------------------------------------------------
+// THE BOY — curly hair, open plaid flannel, dark tee, jeans, black sneakers.
+// Rendered in full color ('return'), grey ('silence') or wireframe ('break').
+// ---------------------------------------------------------------------------
 export function createAvatar(mode = 'return') {
+  if (mode === 'elder') return createElder();
+
   const group = new THREE.Group();
 
   // --- materials per mode -------------------------------------------------
-  let skinMat, skinShadowMat, hairMat, bodyMat, ponchoMat, eyeMat;
+  let skinMat, skinShadowMat, hairMat, teeMat, flannelMat, jeansMat, shoeMat, soleMat, eyeMat;
   const flat = { flatShading: true };
   if (mode === 'silence') {
     skinMat = new THREE.MeshStandardMaterial({ color: 0x8f9094, roughness: 1, ...flat });
     skinShadowMat = new THREE.MeshStandardMaterial({ color: 0x76777b, roughness: 1, ...flat });
     hairMat = new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 1, ...flat });
-    bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a5246, roughness: 1, ...flat }); // muted green
-    ponchoMat = bodyMat;
+    teeMat = new THREE.MeshStandardMaterial({ color: 0x46484c, roughness: 1, ...flat });
+    flannelMat = new THREE.MeshStandardMaterial({ color: 0x55585e, roughness: 1, side: THREE.DoubleSide, ...flat });
+    jeansMat = new THREE.MeshStandardMaterial({ color: 0x3c3f45, roughness: 1, ...flat });
+    shoeMat = new THREE.MeshStandardMaterial({ color: 0x2c2e32, roughness: 1, ...flat });
+    soleMat = new THREE.MeshStandardMaterial({ color: 0x6a6c70, roughness: 1, ...flat });
     eyeMat = new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 1 });
   } else if (mode === 'break') {
     const wire = { wireframe: true, transparent: true, opacity: 0.7 };
     skinMat = new THREE.MeshBasicMaterial({ color: 0x99ddff, ...wire });
     skinShadowMat = skinMat;
     hairMat = new THREE.MeshBasicMaterial({ color: 0x4488cc, ...wire });
-    bodyMat = new THREE.MeshBasicMaterial({ color: 0x66ccff, ...wire });
-    ponchoMat = bodyMat;
+    teeMat = new THREE.MeshBasicMaterial({ color: 0x66ccff, ...wire });
+    flannelMat = new THREE.MeshBasicMaterial({ color: 0x55aadd, side: THREE.DoubleSide, ...wire });
+    jeansMat = new THREE.MeshBasicMaterial({ color: 0x3388cc, ...wire });
+    shoeMat = new THREE.MeshBasicMaterial({ color: 0x2266aa, ...wire });
+    soleMat = shoeMat;
     eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
   } else {
     skinMat = new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.62, ...flat });
     skinShadowMat = new THREE.MeshStandardMaterial({ color: SKIN_SHADOW, roughness: 0.7, ...flat });
-    hairMat = new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.85, ...flat });
-    bodyMat = new THREE.MeshStandardMaterial({ color: 0x6b4636, roughness: 0.85, ...flat });
-    ponchoMat = new THREE.MeshStandardMaterial({ map: textileTexture(), roughness: 0.82, ...flat });
+    hairMat = new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.88, ...flat });
+    teeMat = new THREE.MeshStandardMaterial({ color: 0x2b2723, roughness: 0.92, ...flat });
+    flannelMat = new THREE.MeshStandardMaterial({ map: plaidTexture(), roughness: 0.85, side: THREE.DoubleSide, ...flat });
+    jeansMat = new THREE.MeshStandardMaterial({ color: 0x3d5a7e, roughness: 0.9, ...flat });
+    shoeMat = new THREE.MeshStandardMaterial({ color: 0x191a1e, roughness: 0.8, ...flat });
+    soleMat = new THREE.MeshStandardMaterial({ color: 0xeeebe0, roughness: 0.85, ...flat });
     eyeMat = new THREE.MeshStandardMaterial({ color: 0x16100b, roughness: 0.4 });
   }
 
@@ -85,22 +239,49 @@ export function createAvatar(mode = 'return') {
   hips.position.y = 0.92;
   group.add(hips);
 
-  // pelvis
-  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.18, 10), bodyMat);
+  // pelvis (jeans)
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.2, 10), jeansMat);
   pelvis.castShadow = true;
   hips.add(pelvis);
 
-  // torso (tapered toward shoulders)
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.5, 10), bodyMat);
-  torso.position.y = 0.34;
+  // torso — the dark tee (tapered toward shoulders)
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.175, 0.52, 10), teeMat);
+  torso.position.y = 0.33;
   torso.castShadow = true;
   hips.add(torso);
+
+  // the open flannel — a cylinder with a front gap so the tee shows through
+  const FRONT_GAP = 1.0; // radians of opening, centered on +Z
+  const flannel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.235, 0.25, 0.62, 14, 1, true, FRONT_GAP / 2, Math.PI * 2 - FRONT_GAP),
+    flannelMat
+  );
+  flannel.position.y = 0.3;
+  flannel.castShadow = true;
+  hips.add(flannel);
+
+  // collar — two folded tabs at the neckline
+  const collarGeo = new THREE.BoxGeometry(0.07, 0.035, 0.015);
+  const collarL = new THREE.Mesh(collarGeo, flannelMat);
+  const collarR = new THREE.Mesh(collarGeo, flannelMat);
+  collarL.position.set(-0.07, 0.63, 0.13); collarL.rotation.set(0.3, 0.45, 0.12);
+  collarR.position.set(0.07, 0.63, 0.13); collarR.rotation.set(0.3, -0.45, -0.12);
+  hips.add(collarL, collarR);
+
+  // chest pockets on the front panels
+  const pocketGeo = new THREE.BoxGeometry(0.075, 0.075, 0.015);
+  [-1, 1].forEach(s => {
+    const pocket = new THREE.Mesh(pocketGeo, flannelMat);
+    pocket.position.set(s * 0.135, 0.44, 0.185);
+    pocket.rotation.y = s * 0.55;
+    hips.add(pocket);
+  });
 
   // shoulders
   const shoulders = new THREE.Group();
   shoulders.position.y = 0.56;
   hips.add(shoulders);
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.22, 0.12, 10), bodyMat);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.22, 0.12, 10), flannelMat);
   shoulders.add(collar);
 
   // neck
@@ -118,77 +299,104 @@ export function createAvatar(mode = 'return') {
   head.castShadow = true;
   headPivot.add(head);
 
-  // face: two eyes (and a faint nose ridge) on +Z
+  // face: two eyes, brows, and a faint nose ridge on +Z
   const eyeGeo = new THREE.SphereGeometry(0.018, 8, 8);
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
   const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(-0.045, 0.105, 0.115);
-  eyeR.position.set(0.045, 0.105, 0.115);
+  const EYE_X = 0.045;
+  eyeL.position.set(-EYE_X, 0.105, 0.115);
+  eyeR.position.set(EYE_X, 0.105, 0.115);
   headPivot.add(eyeL, eyeR);
+  const browGeo = new THREE.BoxGeometry(0.05, 0.009, 0.012);
+  const browL = new THREE.Mesh(browGeo, hairMat);
+  const browR = new THREE.Mesh(browGeo, hairMat);
+  browL.position.set(-EYE_X, 0.148, 0.116); browL.rotation.z = -0.12;
+  browR.position.set(EYE_X, 0.148, 0.116); browR.rotation.z = 0.12;
+  headPivot.add(browL, browR);
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 6), skinShadowMat);
   nose.rotation.x = Math.PI / 2.1;
   nose.position.set(0, 0.08, 0.13);
   headPivot.add(nose);
 
-  // hair / chullo
-  if (mode === 'return') {
-    // chullo (knitted Andean hat) — textile cone with two ear flaps + pompom
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.155, 0.2, 12), ponchoMat);
-    hat.position.y = 0.2;
-    headPivot.add(hat);
-    const flapGeo = new THREE.SphereGeometry(0.04, 8, 6);
-    const flapL = new THREE.Mesh(flapGeo, ponchoMat); flapL.position.set(-0.13, 0.07, 0);
-    const flapR = new THREE.Mesh(flapGeo, ponchoMat); flapR.position.set(0.13, 0.07, 0);
-    const pom = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8),
-      new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.9, flatShading: true }));
-    pom.position.y = 0.31;
-    headPivot.add(flapL, flapR, pom);
-  } else {
-    const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.142, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.9),
-      hairMat
-    );
-    hair.scale.set(0.95, 1.05, 1);
-    hair.position.y = 0.11;
-    headPivot.add(hair);
+  // CURLY HAIR — a cap of clustered curls over the top and back of the head
+  const curls = new THREE.Group();
+  const CURL_N = 60;
+  for (let i = 0; i < CURL_N; i++) {
+    // golden-angle distribution over the sphere
+    const y = 1 - (i + 0.5) / CURL_N * 1.55;       // 1 .. -0.55
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const a = i * 2.39996;
+    const px = Math.cos(a) * r, pz = Math.sin(a) * r;
+    // keep curls on top, sides and back; leave the face clear
+    if (y < 0.3 && pz > 0.25) continue;
+    if (y < -0.2) continue;
+    const curl = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028 + Math.random() * 0.016, 7, 6), hairMat);
+    curl.position.set(px * 0.125 * 0.92, 0.1 + y * 0.135 * 1.08 + 0.012, pz * 0.128 * 0.95);
+    curl.castShadow = true;
+    curls.add(curl);
   }
+  // fringe — a few curls dropping onto the forehead
+  [[-0.07, 0.2, 0.1], [0.0, 0.215, 0.105], [0.07, 0.2, 0.1], [-0.115, 0.13, 0.06], [0.115, 0.13, 0.06]].forEach(p => {
+    const curl = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.01, 7, 6), hairMat);
+    curl.position.set(p[0], p[1], p[2]);
+    curls.add(curl);
+  });
+  headPivot.add(curls);
 
-  // poncho — drapes over shoulders (return + silence wear an outer layer)
-  if (mode !== 'break') {
-    const poncho = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.62, 10, 1, true), ponchoMat);
-    poncho.position.y = 0.3;
-    poncho.castShadow = true;
-    hips.add(poncho);
-  }
-
-  // --- arms (pivot at shoulder) ------------------------------------------
+  // --- arms: plaid sleeve rolled at the elbow, bare forearm ----------------
   function makeArm(side) {
-    const upper = segment(skinMat, { topR: 0.055, botR: 0.05, len: 0.32 });
-    const fore = segment(skinMat, { topR: 0.05, botR: 0.042, len: 0.3 });
-    fore.position.y = -0.32;
+    const upper = segment(flannelMat, { topR: 0.062, botR: 0.056, len: 0.3 });
+    // rolled cuff at the elbow
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.058, 0.05, 10), flannelMat);
+    cuff.position.y = -0.3;
+    upper.add(cuff);
+    const fore = segment(skinMat, { topR: 0.046, botR: 0.04, len: 0.28 });
+    fore.position.y = -0.31;
     upper.add(fore);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), skinShadowMat);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), skinShadowMat);
     hand.scale.set(1, 1.2, 0.7);
-    hand.position.y = -0.3;
+    hand.position.y = -0.28;
     fore.add(hand);
-    upper.position.set(side * 0.23, 0.04, 0);
+    upper.position.set(side * 0.24, 0.04, 0);
     upper.rotation.z = side * 0.08;
     shoulders.add(upper);
-    return { upper, fore };
+    return { upper, fore, hand };
   }
   const armL = makeArm(-1);
   const armR = makeArm(1);
 
-  // --- legs (pivot at hip) -----------------------------------------------
+  // pencil — held against the right hand, shown while writing
+  const pencil = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.15, 6),
+    new THREE.MeshStandardMaterial({ color: mode === 'return' ? 0xd9a440 : 0x888888, roughness: 0.7, flatShading: true }));
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.03, 6),
+    new THREE.MeshStandardMaterial({ color: 0x2a2118, roughness: 0.8, flatShading: true }));
+  tip.position.y = -0.09;
+  tip.rotation.x = Math.PI;
+  pencil.add(shaft, tip);
+  pencil.position.set(0, -0.31, 0.04);
+  pencil.rotation.x = 0.5;
+  pencil.visible = false;
+  armR.fore.add(pencil);
+
+  // --- legs: jeans with black low-top sneakers ----------------------------
   function makeLeg(side) {
-    const thigh = segment(bodyMat, { topR: 0.08, botR: 0.07, len: 0.46 });
-    const shin = segment(bodyMat, { topR: 0.07, botR: 0.055, len: 0.46 });
+    const thigh = segment(jeansMat, { topR: 0.085, botR: 0.07, len: 0.46 });
+    const shin = segment(jeansMat, { topR: 0.066, botR: 0.054, len: 0.44 });
     shin.position.y = -0.46;
     thigh.add(shin);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.2), skinShadowMat);
-    foot.position.set(0, -0.45, 0.05);
-    foot.castShadow = true;
-    shin.add(foot);
+    // sneaker: white sole, black upper, white toe cap
+    const sneaker = new THREE.Group();
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.03, 0.24), soleMat);
+    const upperShoe = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.06, 0.215), shoeMat);
+    upperShoe.position.y = 0.045;
+    const toe = new THREE.Mesh(new THREE.BoxGeometry(0.107, 0.02, 0.06), soleMat);
+    toe.position.set(0, 0.025, 0.085);
+    sneaker.add(sole, upperShoe, toe);
+    sneaker.position.set(0, -0.45, 0.05);
+    sneaker.children.forEach(m => { m.castShadow = true; });
+    shin.add(sneaker);
     thigh.position.set(side * 0.1, -0.08, 0);
     hips.add(thigh);
     return { thigh, shin };
@@ -200,15 +408,53 @@ export function createAvatar(mode = 'return') {
   armL.upper.rotation.x = 0.12; armR.upper.rotation.x = 0.12;
 
   // ------------------------------------------------------------------------
-  // Animation
+  // Animation & acting
   // ------------------------------------------------------------------------
-  const allMats = [skinMat, skinShadowMat, hairMat, bodyMat, ponchoMat, eyeMat];
+  const allMats = [skinMat, skinShadowMat, hairMat, teeMat, flannelMat, jeansMat, shoeMat, eyeMat];
   const t0 = Math.random() * 10;
-  const state = { t: t0, blink: 0 };
+  const state = { t: t0, blink: 0, action: 'idle', at: 0 };
+
+  group.userData.setAction = (a) => {
+    if (state.action !== a) { state.action = a; state.at = 0; }
+  };
+  group.userData.joints = { hips, shoulders, headPivot, torso, neck, armL, armR, legL, legR, eyeL, eyeR, pencil };
+
+  // base seated-at-the-desk pose shared by write / freeze / fear
+  function seatedPose() {
+    hips.position.y = 0.56;
+    hips.rotation.set(0, 0, 0);
+    legL.thigh.rotation.set(-1.42, 0, -0.12);
+    legR.thigh.rotation.set(-1.36, 0, 0.12);
+    legL.shin.rotation.set(1.32, 0, 0);
+    legR.shin.rotation.set(1.28, 0, 0);
+    shoulders.rotation.set(0.26, 0, 0);
+    // arms reach forward onto the desk (negative x swings the limb toward +Z)
+    armL.upper.rotation.set(-1.45, 0.12, 0.2);
+    armL.fore.rotation.set(0.3, 0, 0);
+    armR.upper.rotation.set(-1.55, -0.08, -0.18);
+    armR.fore.rotation.set(0.35, 0, 0);
+    headPivot.rotation.set(0.48, 0, 0);
+    torso.scale.set(1, 1, 1);
+    group.rotation.z = 0;
+  }
+  function standingReset() {
+    hips.position.y = 0.92;
+    hips.rotation.set(0, 0, 0);
+    legL.thigh.rotation.set(0, 0, 0);
+    legR.thigh.rotation.set(0, 0, 0);
+    legL.shin.rotation.set(0, 0, 0);
+    legR.shin.rotation.set(0, 0, 0);
+    shoulders.rotation.set(0, 0, 0);
+  }
+  function resetEyes() {
+    eyeL.position.x = -EYE_X; eyeR.position.x = EYE_X;
+    neck.scale.set(1, 1, 1);
+  }
 
   group.userData.update = (dt) => {
     state.t += dt;
-    const t = state.t;
+    state.at += dt;
+    const t = state.t, at = state.at;
 
     if (mode === 'silence') {
       // closed in: head bowed, shoulders rounded, barely any motion
@@ -216,28 +462,119 @@ export function createAvatar(mode = 'return') {
       shoulders.rotation.x = 0.14;
       hips.position.y = 0.9 + Math.sin(t * 1.1) * 0.004; // shallow breath
       armL.upper.rotation.x = 0.35; armR.upper.rotation.x = 0.35; // arms pulled in
-      // rare rigid twitch
       const twitch = (Math.floor(t * 1.5) % 7 === 0) ? Math.sin(t * 40) * 0.01 : 0;
       group.rotation.z = twitch;
-
-    } else if (mode === 'break') {
+      return;
+    }
+    if (mode === 'break') {
       // unfinished: flicker visibility, jitter, opacity noise
       group.visible = Math.random() > 0.12;
       group.position.x += (Math.random() - 0.5) * 0.012;
-      group.position.x *= 0.92; // spring back toward origin
+      group.position.x *= 0.92;
       headPivot.rotation.y = (Math.random() - 0.5) * 0.3;
       allMats.forEach(m => { if (m.opacity !== undefined) m.opacity = 0.35 + Math.random() * 0.5; });
+      return;
+    }
+
+    // -- the living boy: directed actions ----------------------------------
+    const a = state.action;
+    pencil.visible = (a === 'write' || a === 'freeze' || a === 'fear');
+
+    if (a === 'write') {
+      seatedPose();
+      resetEyes();
+      // breath + the small life of concentration
+      const breath = Math.sin(t * 1.4) * 0.012;
+      torso.scale.set(1 + breath, 1 + breath * 0.4, 1 + breath);
+      headPivot.rotation.x = 0.48 + Math.sin(t * 1.2) * 0.02;
+      headPivot.rotation.z = Math.sin(t * 0.5) * 0.02;
+      // the writing hand: quick scratch strokes + a slow drift across the page
+      armR.upper.rotation.y = -0.08 + Math.sin(t * 0.6) * 0.08;
+      armR.fore.rotation.z = Math.sin(t * 16) * 0.05;
+      armR.fore.rotation.x = 0.35 + Math.sin(t * 8) * 0.025;
+
+    } else if (a === 'freeze') {
+      seatedPose();
+      resetEyes();
+      // the pencil stops INSTANTLY: no motion terms at all
+      shoulders.rotation.x = 0.33;               // shoulders stiffen
+      armR.hand.scale.set(0.92, 1.1, 0.64);      // fingers tighten
+      if (at > 1.1) {
+        // after the held breath: shallow, fast breathing
+        const sh = Math.sin(t * 3.4) * 0.007;
+        torso.scale.set(1 + sh, 1 + sh * 0.5, 1 + sh);
+      }
+
+    } else if (a === 'fear') {
+      seatedPose();
+      shoulders.rotation.x = 0.33;
+      armR.hand.scale.set(0.92, 1.1, 0.64);
+      // eyes slide toward the door, then the head dares to follow — slowly
+      const e = Math.min(1, at / 1.8);
+      const ee = e * e * (3 - 2 * e);
+      eyeL.position.x = -EYE_X + ee * 0.02;
+      eyeR.position.x = EYE_X + ee * 0.02;
+      headPivot.rotation.y = ee * 0.42;
+      headPivot.rotation.x = 0.48 - ee * 0.3;    // eyes lift from the page
+      // shallow quick breathing
+      const sh = Math.sin(t * 3.2) * 0.009;
+      torso.scale.set(1 + sh, 1 + sh * 0.5, 1 + sh);
+      // a swallow
+      const sw = at % 3.4;
+      neck.scale.y = sw > 2.2 && sw < 2.5 ? 1 + Math.sin((sw - 2.2) / 0.3 * Math.PI) * 0.18 : 1;
+
+    } else if (a === 'still') {
+      standingReset();
+      resetEyes();
+      const breath = Math.sin(t * 1.2) * 0.012;
+      torso.scale.set(1 + breath, 1 + breath * 0.4, 1 + breath);
+      headPivot.rotation.set(0.14 + Math.sin(t * 0.6) * 0.02, 0, 0);
+      hips.rotation.z = Math.sin(t * 0.8) * 0.015;
+      armL.upper.rotation.x = 0.16; armR.upper.rotation.x = 0.16;
+      armL.fore.rotation.x = 0.1; armR.fore.rotation.x = 0.1;
+
+    } else if (a === 'walk') {
+      standingReset();
+      resetEyes();
+      const w = t * 5;
+      hips.position.y = 0.92 + Math.abs(Math.sin(w)) * 0.035;
+      legL.thigh.rotation.x = Math.sin(w) * 0.5;
+      legR.thigh.rotation.x = -Math.sin(w) * 0.5;
+      legL.shin.rotation.x = Math.max(0, -Math.sin(w)) * 0.6;
+      legR.shin.rotation.x = Math.max(0, Math.sin(w)) * 0.6;
+      armL.upper.rotation.x = -Math.sin(w) * 0.35 + 0.1;
+      armR.upper.rotation.x = Math.sin(w) * 0.35 + 0.1;
+      headPivot.rotation.x = -0.02;
+      headPivot.rotation.y = Math.sin(t * 0.5) * 0.08;
+
+    } else if (a === 'dance') {
+      standingReset();
+      resetEyes();
+      // huaynito — bounce and joy; the film may spin group.rotation.y freely
+      const b = t * 3.4;
+      hips.position.y = 0.92 + Math.abs(Math.sin(b)) * 0.06;
+      hips.rotation.z = Math.sin(b * 0.5) * 0.08;
+      armL.upper.rotation.x = -0.6 + Math.sin(b) * 0.4;
+      armR.upper.rotation.x = -0.6 - Math.sin(b) * 0.4;
+      armL.upper.rotation.z = -0.5; armR.upper.rotation.z = 0.5;
+      armL.fore.rotation.x = -0.5; armR.fore.rotation.x = -0.5;
+      legL.thigh.rotation.x = Math.sin(b) * 0.18;
+      legR.thigh.rotation.x = -Math.sin(b) * 0.18;
+      headPivot.rotation.z = Math.sin(b * 0.5) * 0.1;
+      headPivot.rotation.x = -0.06;
 
     } else {
-      // alive: breath, weight-shift sway, gentle huaynito bounce, arm swing
+      // idle — alive: breath, weight-shift sway, gentle bounce, arm swing
+      standingReset();
+      resetEyes();
       const breath = Math.sin(t * 1.5) * 0.018;
       torso.scale.set(1 + breath, 1 + breath * 0.4, 1 + breath);
       const sway = Math.sin(t * 0.9);
       hips.rotation.z = sway * 0.05;
-      hips.position.y = 0.92 + Math.abs(Math.sin(t * 1.8)) * 0.015; // soft bounce
+      hips.position.y = 0.92 + Math.abs(Math.sin(t * 1.8)) * 0.015;
       shoulders.rotation.z = -sway * 0.04;
       headPivot.rotation.z = sway * 0.05;
-      headPivot.rotation.y = Math.sin(t * 0.5) * 0.18;       // looking around, alive
+      headPivot.rotation.y = Math.sin(t * 0.5) * 0.18;
       headPivot.rotation.x = -0.04 + Math.sin(t * 0.7) * 0.04;
       group.rotation.y = Math.sin(t * 0.35) * 0.12;
       armL.upper.rotation.x = 0.12 + Math.sin(t * 1.5) * 0.16;
@@ -246,13 +583,13 @@ export function createAvatar(mode = 'return') {
       armR.fore.rotation.x = 0.2 - Math.sin(t * 1.5 + 0.6) * 0.1;
       legL.thigh.rotation.x = Math.sin(t * 1.8) * 0.05;
       legR.thigh.rotation.x = -Math.sin(t * 1.8) * 0.05;
-
-      // occasional blink
-      state.blink -= dt;
-      if (state.blink < 0) { state.blink = 2.5 + Math.random() * 3; }
-      const blinking = state.blink < 0.12;
-      eyeL.scale.y = eyeR.scale.y = blinking ? 0.15 : 1;
     }
+
+    // occasional blink (all living actions)
+    state.blink -= dt;
+    if (state.blink < 0) state.blink = 2.5 + Math.random() * 3;
+    const blinking = state.blink < 0.12;
+    eyeL.scale.y = eyeR.scale.y = blinking ? 0.15 : 1;
   };
 
   return group;

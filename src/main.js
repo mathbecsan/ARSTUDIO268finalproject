@@ -559,6 +559,12 @@ function filmCue(name) {
     sound.stopLayer('wind', 1.5); sound.stopLayer('andean', 1.5);
   } else if (name === 'steps') {
     sound.footsteps(5, 0.7);
+  } else if (name === 'scratch') {
+    sound.startPencilScratch();
+  } else if (name === 'scratch_stop') {
+    sound.stopLayer('scratch', 0.25);
+  } else if (name === 'clomp') {
+    sound.clomp();
   } else if (name === 'knock') {
     sound.footsteps(3, 0.5);
   } else if (name === 'prayer') {

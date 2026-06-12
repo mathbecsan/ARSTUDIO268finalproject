@@ -45,6 +45,152 @@ export function buildFilm(opts) {
 
   const sets = { room: roomSet, valley: valleySet, finale: finaleSet, grey: greySet };
   Object.values(sets).forEach(s => { s.group.visible = false; group.add(s.group); });
+  // the explorable valley has its own ambient avatar — the film casts its own boy
+  if (valleySet.residentAvatar) valleySet.residentAvatar.visible = false;
+
+  // the room's own lights, so Scene 1 can pull them down to near-darkness
+  const roomPLights = [];
+  roomSet.group.traverse(o => { if (o.isPointLight) roomPLights.push(o); });
+  function dimRoom() {
+    if (roomPLights[0]) roomPLights[0].intensity = 0.35;             // ceiling flicker, almost off
+    if (roomPLights[1]) roomPLights[1].intensity = 0.8;              // kerosene lamp, distant ember
+  }
+
+  // ---------------------------------------------------------------------
+  // SCENE 1 PROPS — stool, desk lamp, shelf with the family photograph,
+  // trembling dust, and the hallway light leaking under the door.
+  // Visible whenever the room set is.
+  // ---------------------------------------------------------------------
+  const s1 = new THREE.Group();
+  group.add(s1);
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x6a4a2e, roughness: 0.9, flatShading: true });
+
+  // wooden stool beneath the boy
+  const stool = new THREE.Group();
+  const stoolSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.15, 0.05, 10), woodMat);
+  stoolSeat.position.y = 0.47;
+  const stoolLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.46, 8), woodMat);
+  stoolLeg.position.y = 0.23;
+  stool.add(stoolSeat, stoolLeg);
+  stool.position.set(-1.65, 0, -2.25);
+  s1.add(stool);
+
+  // small desk lamp balanced at the end of the ironing board
+  const lampGrp = new THREE.Group();
+  const lampMetal = new THREE.MeshStandardMaterial({ color: 0x424a52, metalness: 0.5, roughness: 0.5 });
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.025, 10), lampMetal);
+  const lampStem = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.26, 6), lampMetal);
+  lampStem.position.set(-0.05, 0.13, 0.02);
+  lampStem.rotation.z = 0.45;
+  const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.1, 10, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x2e4a3a, roughness: 0.6, side: THREE.DoubleSide }));
+  lampShade.position.set(-0.12, 0.26, 0.04);
+  lampShade.rotation.z = 0.8;
+  const lampBulb = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffaa44, emissiveIntensity: 1.2 }));
+  lampBulb.position.set(-0.14, 0.24, 0.04);
+  lampGrp.add(lampBase, lampStem, lampShade, lampBulb);
+  lampGrp.position.set(-1.27, 0.875, -2.96);
+  s1.add(lampGrp);
+  const deskLight = new THREE.PointLight(0xffb066, 1.9, 5.5, 2);
+  deskLight.position.set(-1.45, 1.25, -2.85);
+  s1.add(deskLight);
+  // dark blue night fill — the rest of the room stays in cold shadow
+  const blueFill = new THREE.PointLight(0x2e4a78, 2.2, 14, 1.6);
+  blueFill.position.set(0.6, 2.7, 0.8);
+  s1.add(blueFill);
+
+  // shelf on the left wall with the framed family photograph and two books
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 0.85), woodMat);
+  shelf.position.set(-3.42, 1.66, -0.6);
+  s1.add(shelf);
+  // a pale spill of night light so the shelf close-up reads in the dark
+  const shelfLight = new THREE.PointLight(0x9db4d8, 1.4, 3.2, 1.8);
+  shelfLight.position.set(-2.6, 2.2, -0.4);
+  s1.add(shelfLight);
+  const photo = new THREE.Group();
+  const photoFrame = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.21, 0.17),
+    new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: 0.7 }));
+  const photoPic = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.17),
+    new THREE.MeshStandardMaterial({ color: 0xcdb98e, roughness: 0.9 }));
+  photoPic.rotation.y = Math.PI / 2;
+  photoPic.position.x = 0.012;
+  photo.add(photoFrame, photoPic);
+  photo.position.set(-3.4, 1.79, -0.5);
+  photo.rotation.y = 0.12;
+  s1.add(photo);
+  [[-0.85, 0.06, 0x7a3a28], [-0.78, 0.05, 0x3a5a4a]].forEach(([dz, h, col]) => {
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, h),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 }));
+    book.position.set(-3.42, 1.76, -0.6 + dz + 0.6);
+    s1.add(book);
+  });
+
+  // dust beneath the shelf — bursts loose when a footstep lands
+  const DUST_N = 50;
+  const dustBase = new Float32Array(DUST_N * 3);
+  const dustSpeed = new Float32Array(DUST_N);
+  for (let i = 0; i < DUST_N; i++) {
+    dustBase[i * 3] = -3.42 + Math.random() * 0.14;
+    dustBase[i * 3 + 1] = 1.62 + Math.random() * 0.08;
+    dustBase[i * 3 + 2] = -1.0 + Math.random() * 0.85;
+    dustSpeed[i] = 0.1 + Math.random() * 0.25;
+  }
+  const dustGeo = new THREE.BufferGeometry();
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustBase.slice(), 3));
+  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+    color: 0xe8dcc0, size: 0.024, transparent: true, opacity: 0, depthWrite: false,
+  }));
+  s1.add(dust);
+  let dustT = -1, photoShake = 0;
+  function dustBurst() {
+    dustT = 0;
+    dustGeo.attributes.position.array.set(dustBase);
+    dustGeo.attributes.position.needsUpdate = true;
+  }
+
+  // warm hallway light leaking under the door, and the shadow that crosses it.
+  // The slit is a vertical sliver (reads from the low camera angle); the floor
+  // spill and a faint hall light sell the leak, and both dim as the shadow passes.
+  const doorGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 0.045),
+    new THREE.MeshBasicMaterial({ color: 0xffc070, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  doorGlow.position.set(1.6, 0.035, 3.895);
+  s1.add(doorGlow);
+  const floorSpill = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 0.3),
+    new THREE.MeshBasicMaterial({ color: 0xffc070, transparent: true, opacity: 0.16 }));
+  floorSpill.rotation.x = -Math.PI / 2;
+  floorSpill.position.set(1.6, 0.012, 3.74);
+  s1.add(floorSpill);
+  const hallLight = new THREE.PointLight(0xffc070, 0.9, 3, 1.8);
+  hallLight.position.set(1.6, 0.2, 3.55);
+  s1.add(hallLight);
+  const doorShadow = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.06),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.92, side: THREE.DoubleSide }));
+  doorShadow.position.set(0.8, 0.035, 3.89);
+  doorShadow.visible = false;
+  s1.add(doorShadow);
+
+  // per-frame life of the scene-1 props (lamp breathing, dust, photo rattle)
+  function s1Anim(dt) {
+    if (!s1.visible) return;
+    deskLight.intensity = 1.8 + Math.sin(performance.now() * 0.012) * 0.12 + Math.random() * 0.1;
+    lampBulb.material.emissiveIntensity = 1.1 + Math.random() * 0.25;
+    if (photoShake > 0) {
+      photoShake -= dt;
+      photo.rotation.z = Math.sin(performance.now() * 0.07) * 0.06 * Math.max(0, photoShake);
+      photo.position.y = 1.79 + Math.sin(performance.now() * 0.09) * 0.004 * Math.max(0, photoShake);
+    } else {
+      photo.rotation.z *= 0.85;
+    }
+    if (dustT >= 0) {
+      dustT += dt;
+      const pos = dustGeo.attributes.position;
+      for (let i = 0; i < DUST_N; i++) pos.setY(i, pos.getY(i) - dt * dustSpeed[i]);
+      pos.needsUpdate = true;
+      dust.material.opacity = Math.max(0, 0.85 * (1 - dustT / 1.8));
+      if (dustT > 1.8) { dustT = -1; dust.material.opacity = 0; }
+    }
+  }
 
   // ---------------------------------------------------------------------
   // ACTORS
@@ -54,9 +200,10 @@ export function buildFilm(opts) {
   father.scale.set(1.3, 1.18, 1.3);
   const grandfather = createAvatar('silence'); // the flashback
   grandfather.scale.set(1.2, 1.1, 1.2);
-  const grandma = createAvatar('return');
+  const grandma = createAvatar('elder');
   grandma.scale.set(0.92, 0.88, 0.92);
   [boy, father, grandfather, grandma].forEach(a => { a.visible = false; group.add(a); });
+  if (import.meta.env.DEV) window.__boy = boy;
 
   // insult sprites (scene 5)
   const insults = ['COBARDE', 'IMBÉCIL', 'ESTÚPIDO'].map((wrd, i) => {
@@ -84,27 +231,94 @@ export function buildFilm(opts) {
     a.position.set(x, 0, z); a.rotation.y = ry; a.visible = visible;
   }
   function hideActors() { [boy, father, grandfather, grandma].forEach(a => a.visible = false); insults.forEach(s => s.visible = false); books.forEach(b => b.visible = false); }
+  // the boy at his ironing-board desk, seated on the stool, facing the lamp
+  function seatBoy(action = 'write') {
+    place(boy, -1.65, -2.25, Math.PI + 0.26);
+    boy.userData.setAction(action);
+  }
 
+  const S1_LINE = 'His clomp signaled that he would soon enter my room.';
   const SHOTS = [
-    { // 1 — the clomp
-      dur: 7, set: 'room', cue: 'tension',
-      caption: 'His clomp signaled that he would soon enter my room.',
-      enter() { hideActors(); place(boy, -1.8, -2.0, 0.5); cue('steps'); },
-      tick(t, p) { camPath(cam, V3(-0.5, 1.5, 3.4), V3(0.4, 1.4, 2.2), V3(1.6, 1.2, D / 2), p); },
+    // =====================================================================
+    // SCENE 1 — five shots. A quiet room, two footsteps, and a shadow.
+    // =====================================================================
+    { // 1.1 — extreme close-up: the pencil across the paper
+      dur: 6, set: 'room', cue: 'scratch',
+      caption: S1_LINE,
+      enter() { hideActors(); seatBoy('write'); },
+      tick(t, p) {
+        dimRoom();
+        // grazing across the board from its far end, pencil in profile
+        camPath(cam, V3(-2.6, 1.08, -2.38), V3(-2.42, 1.0, -2.5), V3(-1.9, 0.87, -2.68), p);
+      },
+    },
+    { // 1.2 — CLOMP. the pencil instantly stops. the camera does not move.
+      dur: 5, set: 'room',
+      caption: S1_LINE,
+      enter() { seatBoy('write'); this.hit = false; },
+      tick(t) {
+        dimRoom();
+        if (!this.hit && t > 1.1) {
+          this.hit = true;
+          cue('scratch_stop'); cue('clomp'); cue('tension');
+          boy.userData.setAction('freeze');
+        }
+        cam.position.set(-2.42, 1.0, -2.5);
+        cam.lookAt(-1.9, 0.87, -2.68);
+      },
+    },
+    { // 1.3 — dust trembles from the shelf; the family photograph vibrates
+      dur: 5, set: 'room',
+      caption: S1_LINE,
+      enter() { this.hit = false; },
+      tick(t, p) {
+        dimRoom();
+        if (!this.hit && t > 1.3) {
+          this.hit = true;
+          cue('clomp'); dustBurst(); photoShake = 0.9;
+        }
+        camPath(cam, V3(-2.35, 1.88, 0.3), V3(-2.62, 1.8, -0.02), V3(-3.4, 1.72, -0.56), p);
+      },
+    },
+    { // 1.4 — close-up on the boy's eyes. they move toward the door first.
+      dur: 5.5, set: 'room',
+      caption: S1_LINE,
+      enter() { boy.userData.setAction('fear'); },
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-1.95, 1.38, -3.18), V3(-1.86, 1.34, -3.0), V3(-1.66, 1.3, -2.28), p);
+      },
+    },
+    { // 1.5 — low-angle floor shot. a shadow slides beneath the door.
+      dur: 5.5, set: 'room',
+      caption: S1_LINE,
+      enter() { this.hit = false; doorShadow.visible = false; },
+      tick(t, p) {
+        dimRoom();
+        if (!this.hit && t > 1.2) { this.hit = true; cue('clomp'); }
+        if (t > 1.0) {
+          doorShadow.visible = true;
+          doorShadow.position.x = lerp(0.75, 2.5, ease(Math.min(1, (t - 1.0) / 3.6)));
+        }
+        // the hallway light dies as the shadow crosses the centre of the door
+        const occ = doorShadow.visible ? Math.max(0, 1 - Math.abs(doorShadow.position.x - 1.6) / 0.5) : 0;
+        hallLight.intensity = 0.9 * (1 - occ * 0.85);
+        doorGlow.material.opacity = 0.85 * (1 - occ * 0.55);
+        camPath(cam, V3(1.3, 0.26, 1.6), V3(1.45, 0.18, 2.3), V3(1.62, 0.1, 3.92), p);
+      },
     },
     { // 2 — the ironing-board desk
       dur: 7, set: 'room',
       caption: 'The ironing board I used as a desk felt on the verge of collapsing as I planned my Quechua lessons.',
-      enter() { hideActors(); place(boy, -1.5, -2.1, -0.6); },
+      enter() { hideActors(); seatBoy('write'); doorShadow.visible = false; },
       tick(t, p) {
-        boy.children[0].rotation.x = 0.22; // leaning over the desk
         camPath(cam, V3(0.6, 1.3, -0.6), V3(-0.4, 1.15, -1.5), V3(-1.8, 0.95, -2.8), p);
       },
     },
     { // 3 — the father bursts in
       dur: 8, set: 'room', cue: 'knock',
       caption: '“¡¿Qué estupidez haces?! Those dialects you learn are useless,” my father said — a Quechua speaker himself.',
-      enter() { hideActors(); place(boy, -1.5, -2.1, -0.6); place(father, 1.6, 2.6, Math.PI); },
+      enter() { hideActors(); seatBoy('freeze'); place(father, 1.6, 2.6, Math.PI); },
       tick(t, p) {
         father.position.z = lerp(2.6, 0.4, ease(Math.min(1, t / 3)));   // advancing
         camPath(cam, V3(-0.8, 0.9, -1.6), V3(-1.2, 0.8, -1.2), V3(1.6, 1.9, 1.4), p); // low angle up at him
@@ -113,33 +327,33 @@ export function buildFilm(opts) {
     { // 4 — quietness or the chicote
       dur: 8, set: 'room',
       caption: 'I did not respond. Anything but quietness meant dozens of hits with his chicote — or freezing showers, for challenging the masculinity the army imposed on him.',
-      enter() { hideActors(); place(boy, -1.5, -2.1, -0.4); place(father, 0.6, 0.2, Math.PI * 0.92); },
+      enter() { hideActors(); seatBoy('fear'); place(father, 0.6, 0.2, Math.PI * 0.92); },
       tick(t, p) {
         // slow orbit around the small boy, father looming beyond
         const a = lerp(-0.6, 0.9, ease(p)), r = 2.2;
-        cam.position.set(-1.5 + Math.sin(a) * r, 1.35, -2.1 + Math.cos(a) * r);
-        cam.lookAt(-1.5, 1.0, -2.1);
+        cam.position.set(-1.65 + Math.sin(a) * r, 1.35, -2.25 + Math.cos(a) * r);
+        cam.lookAt(-1.65, 1.0, -2.25);
       },
     },
     { // 5 — the internal scream
       dur: 6, set: 'room',
       caption: 'I held back my tears and internally screamed to ignore his insults.',
       enter() {
-        hideActors(); place(boy, -1.5, -2.1, 0);
-        insults.forEach((s, i) => { s.visible = true; s.position.set(-1.5 + (i - 1) * 1.1, 1.6 + (i % 2) * 0.5, -1.2); });
+        hideActors(); seatBoy('freeze');
+        insults.forEach((s, i) => { s.visible = true; s.position.set(-1.65 + (i - 1) * 1.1, 1.6 + (i % 2) * 0.5, -1.2); });
       },
       tick(t, p) {
         insults.forEach((s, i) => {
           s.material.opacity = 0.25 + Math.abs(Math.sin(t * 2.2 + i * 1.4)) * 0.75;
           s.position.y = 1.6 + (i % 2) * 0.5 + Math.sin(t * 1.3 + i) * 0.1;
         });
-        camPath(cam, V3(-1.5, 1.5, 0.4), V3(-1.5, 1.45, -0.6), V3(-1.5, 1.5, -2.1), p);
+        camPath(cam, V3(-1.65, 1.5, 0.4), V3(-1.65, 1.45, -0.6), V3(-1.65, 1.5, -2.25), p);
       },
     },
     { // 6 — the prayer
       dur: 7, set: 'room', cue: 'prayer',
       caption: 'Like never before, I prayed with sincerity — and asked for my father to be forgiven. I had nothing left but faith.',
-      enter() { hideActors(); place(boy, 0, -1.5, Math.PI); boy.scale.set(1, 0.82, 1); },
+      enter() { hideActors(); place(boy, 0, -1.5, Math.PI); boy.userData.setAction('still'); boy.scale.set(1, 0.82, 1); },
       tick(t, p) {
         camPath(cam, V3(0, 3.0, 0.6), V3(0, 2.2, -0.2), V3(0, 0.9, -1.5), p); // descending overhead — grace
       },
@@ -157,7 +371,7 @@ export function buildFilm(opts) {
     { // 8 — break the cycle
       dur: 5, set: 'grey',
       caption: 'I had to be the one to break the generational cycle.',
-      enter() { hideActors(); place(boy, 0, -2, 0); },
+      enter() { hideActors(); place(boy, 0, -2, 0); boy.userData.setAction('walk'); },
       tick(t, p) {
         boy.position.z = lerp(-2, 1.2, ease(p)); // walking out of the grey, toward us
         camPath(cam, V3(0, 1.3, 3.4), V3(0, 1.25, 3.0), V3(0, 1.2, boy.position.z), p);
@@ -166,19 +380,19 @@ export function buildFilm(opts) {
     { // 9 — grandma and the chuta
       dur: 8, set: 'valley', cue: 'warmth',
       caption: 'I looked at my grandma for strength, as I had for years. We baked chuta — sweet bread — while learning new Quechua vocabulary.',
-      enter() { hideActors(); place(grandma, -5.2, -8.2, 0.6); place(boy, -4.2, -7.6, -0.5); },
-      tick(t, p) { camPath(cam, V3(-2.2, 1.6, -4.4), V3(-3.4, 1.4, -5.6), V3(-5, 1.2, -8.6), p); },
+      enter() { hideActors(); place(grandma, -5.5, -7.2, 0.5); place(boy, -4.5, -6.9, -0.7); boy.userData.setAction('still'); },
+      tick(t, p) { camPath(cam, V3(-2.4, 1.6, -4.2), V3(-3.2, 1.35, -5.0), V3(-5.2, 1.1, -7.3), p); },
     },
     { // 10 — the words that sheltered him
       dur: 8, set: 'valley', cue: 'chime',
       caption: 'sinchi — bold. sumaq — handsome. umasapa — intelligent, a bit stubborn. Those words took me under their wing at my lowest point.',
-      enter() { hideActors(); place(boy, -4.2, -7.6, -0.5); place(grandma, -5.2, -8.2, 0.6); },
+      enter() { hideActors(); place(boy, -4.5, -6.9, -0.7); boy.userData.setAction('still'); place(grandma, -5.5, -7.2, 0.5); },
       tick(t, p) { camPath(cam, V3(-4.2, 1.4, -5.2), V3(-4.2, 2.2, -4.6), V3(-4.2, 2.6, -9), p); },
     },
     { // 11 — huaynito
       dur: 8, set: 'valley', cue: 'warmth',
       caption: "Knitting vicuña wool. Dancing Huaycapata's huaynito. I overcame my stage fright — my fear of expressing my true self.",
-      enter() { hideActors(); place(boy, 0, -15, 0); },
+      enter() { hideActors(); place(boy, 0, -15, 0); boy.userData.setAction('dance'); },
       tick(t, p) {
         boy.rotation.y += 0.025;                                  // spinning dance
         boy.position.y = Math.abs(Math.sin(t * 3.4)) * 0.12;      // bounce
@@ -191,7 +405,7 @@ export function buildFilm(opts) {
       dur: 8, set: 'valley',
       caption: 'All-nighters over dusty dictionaries, scientific neologisms in Quechua, antique books from the flea market — my devotion to educate grew stronger than ever.',
       enter() {
-        hideActors(); place(boy, 3, -8, -0.4);
+        hideActors(); place(boy, 3, -8, -0.4); boy.userData.setAction('still');
         books.forEach((b, i) => { b.visible = true; });
       },
       tick(t, p) {
@@ -206,16 +420,17 @@ export function buildFilm(opts) {
     { // 13 — he is slowly changing
       dur: 8, set: 'room', cue: 'tension_soft',
       caption: "I still hear my father's footsteps entering my room. Yet, he is slowly changing.",
-      enter() { hideActors(); place(boy, -1.5, -2.1, -0.6); place(father, 1.6, 2.9, Math.PI); },
+      enter() { hideActors(); seatBoy('write'); place(father, 1.6, 2.9, Math.PI); },
       tick(t, p) {
-        // the father stays at the threshold this time — present, not violent
+        // the father stays at the threshold this time — present, not violent.
+        // and this time, the pencil keeps moving.
         camPath(cam, V3(-1.2, 1.4, -1.2), V3(0.2, 1.45, 0.2), V3(1.6, 1.5, 2.9), p);
       },
     },
     { // 14 — identity in all its forms
       dur: 9, set: 'valley', cue: 'warmth',
       caption: 'My identity feels less hidden, my language less threatened, my people less forgotten. Indigenous, Latino, bisexual — I embrace my authenticity in all its forms, building a globalized, positive masculinity.',
-      enter() { hideActors(); place(boy, 0, -14, 0); },
+      enter() { hideActors(); place(boy, 0, -14, 0); boy.userData.setAction('walk'); },
       tick(t, p) {
         boy.position.z = lerp(-14, -6, ease(p)); // walking toward camera through the valley
         cam.position.set(0, 1.5, boy.position.z + 4.6);
@@ -247,6 +462,7 @@ export function buildFilm(opts) {
 
   function applySet(name) {
     Object.entries(sets).forEach(([k, s]) => { s.group.visible = k === name; });
+    s1.visible = name === 'room';
     const s = sets[name];
     scene.fog = s.fog; scene.background = s.background;
     // slight lift over the explorable grade so faces read on camera
@@ -263,6 +479,7 @@ export function buildFilm(opts) {
     }
     const sh = SHOTS[shotIdx];
     shotT = 0;
+    if (import.meta.env.DEV) window.__shot = shotIdx;
     applySet(sh.set);
     sh.enter();
     setCaption(sh.caption);
@@ -282,6 +499,7 @@ export function buildFilm(opts) {
       const sh = SHOTS[shotIdx];
       // keep underlying set animations alive (lamp flicker, banners, rain…)
       sets[sh.set].update && sets[sh.set].update(dt);
+      s1Anim(dt);
       [boy, father, grandfather, grandma].forEach(a => { if (a.visible) a.userData.update(dt); });
       sh.tick(shotT, Math.min(1, shotT / sh.dur));
       if (shotT >= sh.dur) nextShot();

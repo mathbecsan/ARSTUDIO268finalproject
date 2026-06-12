@@ -555,6 +555,7 @@ export function buildReturn(events) {
     fog: new THREE.Fog(0xf4c98a, 25, 80),
     background: new THREE.Color(0xf4c98a),
     ambient: 0.7,
+    residentAvatar: avatar, // the film hides this and uses its own actor
   };
 }
 

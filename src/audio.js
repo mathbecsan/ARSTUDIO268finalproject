@@ -117,6 +117,57 @@ export class Soundscape {
     }
   }
 
+  // The scratch of graphite across paper — Scene 1, the quiet before.
+  startPencilScratch() {
+    this.init();
+    const g = this.ctx.createGain(); g.gain.value = 0; g.connect(this.master);
+    const layer = { nodes: [], gain: g };
+    layer.interval = setInterval(() => {
+      if (Math.random() < 0.3) return; // pauses in the writing
+      const t = this.ctx.currentTime;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this._noiseBuffer(0.25);
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = 1600 + Math.random() * 1600; f.Q.value = 1.2;
+      const eg = this.ctx.createGain();
+      const dur = 0.06 + Math.random() * 0.16;
+      eg.gain.setValueAtTime(0.001, t);
+      eg.gain.linearRampToValueAtTime(0.1 + Math.random() * 0.07, t + dur * 0.3);
+      eg.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      src.connect(f).connect(eg).connect(g);
+      src.start(t); src.stop(t + dur + 0.05);
+    }, 240);
+    this.layers.scratch = layer;
+    this._fadeLayer(layer, 0.9, 1.2);
+  }
+
+  // A single heavy CLOMP — one boot on a wooden floor, far too close.
+  clomp() {
+    this.init();
+    const t = this.ctx.currentTime;
+    // deep body of the step
+    const o = this.ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(52, t);
+    o.frequency.exponentialRampToValueAtTime(28, t + 0.4);
+    const og = this.ctx.createGain();
+    og.gain.setValueAtTime(0, t);
+    og.gain.linearRampToValueAtTime(1.0, t + 0.012);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    o.connect(og).connect(this.master);
+    o.start(t); o.stop(t + 0.6);
+    // the wooden knock on top
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._noiseBuffer(0.3);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 240;
+    const eg = this.ctx.createGain();
+    eg.gain.setValueAtTime(0.85, t);
+    eg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    src.connect(f).connect(eg).connect(this.master);
+    src.start(t); src.stop(t + 0.3);
+  }
+
   // Universe 1 — cold wind, hollow and grey.
   startColdWind() {
     this.init();
