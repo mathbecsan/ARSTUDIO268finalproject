@@ -10,6 +10,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildRoom, buildSilence, buildBreak, buildReturn, buildFinale, buildAfterall } from './worlds.js';
 import { Soundscape } from './audio.js';
 import { WORDS } from './words.js';
+import { startTitleScene } from './titleScene.js';
+
+// Animated Peruvian-sunset backdrop behind the title.
+const stopTitleScene = startTitleScene(document.getElementById('title-canvas'));
 
 // ---------------------------------------------------------------------------
 // Tiny event bus — worlds emit story beats, main.js turns them into narration.
@@ -517,7 +521,7 @@ $('title-screen').addEventListener('click', async () => {
   applyMuteUI();
   muteBtn.classList.add('ready');
   $('title-screen').classList.add('hidden');
-  setTimeout(() => $('title-screen').remove(), 1600);
+  setTimeout(() => { stopTitleScene(); $('title-screen').remove(); }, 1600);
   player.enabled = true;
   await switchWorld('room');
   sound.footsteps(4, 0.8);
