@@ -294,6 +294,7 @@ async function switchWorld(name) {
 
   // per-world entry narration + sound
   if (name === 'room') {
+    player.enabled = true;
     setChapter('The Room — One Night in Rural Peru');
     sound.startRoomTension();
     trackerEl.classList.remove('visible');
