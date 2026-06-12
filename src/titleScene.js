@@ -50,8 +50,11 @@ export function startTitleScene(canvas) {
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    w = canvas.clientWidth; h = canvas.clientHeight;
-    canvas.width = w * dpr; canvas.height = h * dpr;
+    // Fall back to window dims — clientWidth can be 0 if layout isn't ready yet.
+    w = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth;
+    h = canvas.clientHeight || canvas.parentElement?.clientHeight || window.innerHeight;
+    canvas.width = Math.max(1, w * dpr);
+    canvas.height = Math.max(1, h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     horizon = h * 0.6;
   }
@@ -232,12 +235,24 @@ export function startTitleScene(canvas) {
 
   const onResize = () => resize();
   window.addEventListener('resize', onResize);
+
+  // Self-correct once the element is actually laid out (handles the case
+  // where clientWidth is 0 at init due to the race with first layout).
+  let ro = null;
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(() => resize());
+    ro.observe(canvas);
+  }
+
   resize();
+  // re-measure on the next frame in case layout settles after this tick
+  requestAnimationFrame(() => { resize(); });
   frame();
 
   return function stop() {
     running = false;
     cancelAnimationFrame(raf);
     window.removeEventListener('resize', onResize);
+    if (ro) ro.disconnect();
   };
 }
