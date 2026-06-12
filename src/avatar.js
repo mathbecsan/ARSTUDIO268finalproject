@@ -621,6 +621,21 @@ export function createAvatar(mode = 'return') {
       if (at > 6.2 && at < 8.2) breath += Math.sin((at - 6.2) / 2 * Math.PI) * 0.02; // one deep breath
       torso.scale.set(1 + breath, 1 + breath * 0.5, 1 + breath);
 
+    } else if (a === 'resolve') {
+      // after the memory: breathing steadies, the back straightens, eyes lift
+      kneelPose();
+      resetEyes();
+      armL.upper.rotation.set(-1.2, 0, 0.5);
+      armR.upper.rotation.set(-1.25, 0, -0.5);
+      armL.fore.rotation.x = 0.9;
+      armR.fore.rotation.x = 0.95;
+      const e = easeN(Math.min(1, at / 3));
+      shoulders.rotation.x = lerpN(0.1, -0.04, e);
+      headPivot.rotation.x = lerpN(0.45, -0.06, e);
+      hips.position.y = lerpN(0.5, 0.53, e);
+      const breath = Math.sin(t * 1.0) * (0.016 - 0.006 * e);
+      torso.scale.set(1 + breath, 1 + breath * 0.5, 1 + breath);
+
     } else if (a === 'still') {
       standingReset();
       resetEyes();

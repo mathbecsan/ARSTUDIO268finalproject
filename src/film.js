@@ -203,6 +203,9 @@ export function buildFilm(opts) {
   const grandma = createAvatar('elder');
   grandma.scale.set(0.92, 0.88, 0.92);
   [boy, father, grandfather, grandma].forEach(a => { a.visible = false; group.add(a); });
+  // grey extras — the generations of men carrying the same burden
+  const extras = [createAvatar('silence'), createAvatar('silence'), createAvatar('silence')];
+  extras.forEach((e, i) => { e.scale.setScalar(1.05 + i * 0.08); e.visible = false; group.add(e); });
   if (import.meta.env.DEV) window.__boy = boy;
 
   // insult sprites (scene 5)
@@ -221,6 +224,58 @@ export function buildFilm(opts) {
   }
 
   // ---------------------------------------------------------------------
+  // MEMORY PROPS — the old wooden doorway, the table and bottle. Shown only
+  // during the scene 7/8 memory shots in the grey void.
+  // ---------------------------------------------------------------------
+  const mem = new THREE.Group();
+  mem.visible = false;
+  group.add(mem);
+  const memWood = new THREE.MeshStandardMaterial({ color: 0x3a3026, roughness: 0.9, flatShading: true });
+  // doorway: posts + lintel, and a slab hinged at its edge
+  const post = new THREE.BoxGeometry(0.16, 2.5, 0.16);
+  const postL = new THREE.Mesh(post, memWood); postL.position.set(-0.66, 1.25, -6);
+  const postR = new THREE.Mesh(post, memWood); postR.position.set(0.66, 1.25, -6);
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.18, 0.2), memWood);
+  lintel.position.set(0, 2.55, -6);
+  mem.add(postL, postR, lintel);
+  const hinge = new THREE.Group();
+  hinge.position.set(-0.58, 0, -6);
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(1.16, 2.42, 0.07),
+    new THREE.MeshStandardMaterial({ color: 0x2c2118, roughness: 0.85 }));
+  slab.position.set(0.58, 1.21, 0);
+  hinge.add(slab);
+  mem.add(hinge);
+  // hallway glow beyond the door — figures enter as silhouettes
+  const memBack = new THREE.PointLight(0x97a8c0, 3.5, 12, 1.6);
+  memBack.position.set(0, 2.0, -7.6);
+  mem.add(memBack);
+  // warmth that rises as understanding settles in (scene 8)
+  const memWarm = new THREE.PointLight(0xffb066, 0, 16, 1.6);
+  memWarm.position.set(0, 2.4, -4);
+  mem.add(memWarm);
+  // the table and the bottle
+  const memTable = new THREE.Group();
+  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.65), memWood);
+  tableTop.position.y = 0.78;
+  memTable.add(tableTop);
+  [[-0.48, -0.25], [0.48, -0.25], [-0.48, 0.25], [0.48, 0.25]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.78, 6), memWood);
+    leg.position.set(x, 0.39, z);
+    memTable.add(leg);
+  });
+  memTable.position.set(1.3, 0, -4.6);
+  mem.add(memTable);
+  const bottle = new THREE.Group();
+  const bottleBody = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.22, 8),
+    new THREE.MeshStandardMaterial({ color: 0x3c443c, roughness: 0.4 }));
+  bottleBody.position.y = 0.11;
+  const bottleNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.03, 0.1, 8), bottleBody.material);
+  bottleNeck.position.y = 0.26;
+  bottle.add(bottleBody, bottleNeck);
+  bottle.position.set(1.3, 0.81, -4.6);
+  mem.add(bottle);
+
+  // ---------------------------------------------------------------------
   // SHOTS — each: { dur, set, caption, cue?, enter(), tick(t, p) }
   // Sets are toggled and atmosphere applied on entry. tick drives actors+camera.
   // ---------------------------------------------------------------------
@@ -230,7 +285,7 @@ export function buildFilm(opts) {
   function place(a, x, z, ry = 0, visible = true) {
     a.position.set(x, 0, z); a.rotation.y = ry; a.visible = visible;
   }
-  function hideActors() { [boy, father, grandfather, grandma].forEach(a => a.visible = false); insults.forEach(s => s.visible = false); books.forEach(b => b.visible = false); }
+  function hideActors() { [boy, father, grandfather, grandma, ...extras].forEach(a => a.visible = false); insults.forEach(s => s.visible = false); books.forEach(b => b.visible = false); mem.visible = false; }
   // the boy at his ironing-board desk, seated on the stool, facing the lamp
   function seatBoy(action = 'write') {
     place(boy, -1.65, -2.25, Math.PI + 0.26);
@@ -496,14 +551,120 @@ export function buildFilm(opts) {
         camPath(cam, V3(-1.78, 1.36, -3.05), V3(-1.64, 1.3, -2.62), V3(-1.45, 1.24, -2.0), p);
       },
     },
-    { // 7 — the grandfather (flashback)
-      dur: 9, set: 'grey', cue: 'wind',
-      caption: 'Courage flared when I recalled my grandfather, who came home drunk and burst into anger. My father mirrored him — men carrying the intergenerational trauma of a racist society.',
-      enter() { hideActors(); boy.scale.set(1, 1, 1); place(grandfather, 0, -6, 0); },
+    // =====================================================================
+    // SCENE 7 — THE FLAME OF COURAGE. The memory becomes the spark that
+    // transforms fear into understanding.
+    // =====================================================================
+    { // 7.1 — close-up: the boy kneeling, still. remembering.
+      dur: 5, set: 'room',
+      caption: 'A flame of courage flared within me when I recalled my grandfather, who used to come home drunk and burst out in anger.',
+      enter() { hideActors(); boy.scale.set(1, 1, 1); kneelBoy('pray'); },
       tick(t, p) {
-        grandfather.position.z = lerp(-6, -3.4, ease(p));
-        grandfather.rotation.z = Math.sin(t * 1.7) * 0.08; // staggering
-        camPath(cam, V3(0, 1.6, 2), V3(0, 1.5, 0.8), V3(0, 1.4, -4), p);
+        dimRoom();
+        camPath(cam, V3(-1.7, 1.3, -2.85), V3(-1.58, 1.26, -2.55), V3(-1.45, 1.2, -2.0), p);
+      },
+    },
+    { // 7.2 — the memory: the wooden door bursts open. a silhouette stumbles in.
+      dur: 6, set: 'grey', cue: 'wind',
+      caption: 'A flame of courage flared within me when I recalled my grandfather, who used to come home drunk and burst out in anger.',
+      enter() {
+        hideActors(); mem.visible = true; hinge.rotation.y = 0;
+        place(grandfather, 0, -6.8, 0);
+        this.burst = false;
+      },
+      tick(t, p) {
+        if (!this.burst && t > 1.1) { this.burst = true; cue('clomp'); }
+        if (t > 1.1) hinge.rotation.y = -1.7 * ease(Math.min(1, (t - 1.1) / 0.5)); // the door slams open
+        if (t > 1.4) {
+          grandfather.position.z = lerp(-6.8, -4.6, ease(Math.min(1, (t - 1.4) / 4)));
+          grandfather.rotation.z = Math.sin(t * 1.9) * 0.09; // staggering
+          grandfather.position.y = Math.abs(Math.sin(t * 1.8)) * 0.02;
+        }
+        camPath(cam, V3(0, 1.25, -3.2), V3(0, 1.3, -3.5), V3(0, 1.25, -6), p);
+      },
+    },
+    { // 7.3 — the bottle lands heavily on the table. the house falls silent.
+      dur: 5, set: 'grey',
+      caption: 'A flame of courage flared within me when I recalled my grandfather, who used to come home drunk and burst out in anger.',
+      enter() {
+        mem.visible = true;
+        place(grandfather, 0.7, -5.3, 0.7);
+        extras[0].visible = true; extras[0].position.set(2.6, 0, -6); extras[0].rotation.y = -0.4;
+        bottle.position.y = 1.5;
+        this.thud = false;
+      },
+      tick(t, p) {
+        if (t > 1.0) bottle.position.y = Math.max(0.81, 1.5 - (t - 1.0) * 3.2);
+        if (!this.thud && bottle.position.y <= 0.81) { this.thud = true; cue('clomp'); }
+        camPath(cam, V3(0.45, 1.1, -3.3), V3(0.6, 1.05, -3.5), V3(1.3, 0.9, -4.6), p);
+      },
+    },
+    { // 7.4 — return to the present: the back straightens. the eyes lift.
+      dur: 5, set: 'room', cue: 'quiet',
+      caption: 'A flame of courage flared within me when I recalled my grandfather, who used to come home drunk and burst out in anger.',
+      enter() { hideActors(); kneelBoy('resolve'); },
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-1.72, 1.32, -2.85), V3(-1.6, 1.28, -2.6), V3(-1.45, 1.26, -2.0), p);
+      },
+    },
+    // =====================================================================
+    // SCENE 8 — BREAKING THE CYCLE. One generation blends into another;
+    // the pattern becomes visible. Revelation, not accusation.
+    // =====================================================================
+    { // 8.1 — the grandfather walks through the doorway
+      dur: 5, set: 'grey', cue: 'wind',
+      caption: 'He mirrored my grandfather\u2019s actions \u2014 and those of other indigenous men impacted by the intergenerational trauma caused by our racist society.',
+      enter() {
+        hideActors(); mem.visible = true; hinge.rotation.y = -1.7;
+        place(grandfather, 0, -7, 0);
+      },
+      tick(t, p) {
+        grandfather.position.z = lerp(-7, -4.4, ease(Math.min(1, t / 4.2)));
+        grandfather.position.y = Math.abs(Math.sin(t * 1.7)) * 0.02;
+        grandfather.rotation.z = Math.sin(t * 1.9) * 0.07;
+        cam.position.set(1.9, 1.4, -3.7);
+        cam.lookAt(0, 1.2, -6);
+      },
+    },
+    { // 8.2 — MATCH CUT: the father walks the same path through the same door
+      dur: 5, set: 'grey',
+      caption: 'He mirrored my grandfather\u2019s actions \u2014 and those of other indigenous men impacted by the intergenerational trauma caused by our racist society.',
+      enter() {
+        hideActors(); mem.visible = true; hinge.rotation.y = -1.7;
+        place(father, 0, -7, 0);
+      },
+      tick(t, p) {
+        father.position.z = lerp(-7, -4.4, ease(Math.min(1, t / 4.2)));
+        father.position.y = Math.abs(Math.sin(t * 1.7)) * 0.02;
+        father.rotation.z = Math.sin(t * 1.9) * 0.07;
+        cam.position.set(1.9, 1.4, -3.7); // the camera does not move — same frame
+        cam.lookAt(0, 1.2, -6);
+      },
+    },
+    { // 8.3 — wide symbolic shot: the generations standing in sequence
+      dur: 7, set: 'grey',
+      caption: 'He mirrored my grandfather\u2019s actions \u2014 and those of other indigenous men impacted by the intergenerational trauma caused by our racist society.',
+      enter() {
+        hideActors(); mem.visible = true; hinge.rotation.y = -1.7;
+        place(grandfather, 0, -4.4, 0.15);
+        place(father, 0.15, -5.6, -0.1);
+        extras.forEach((e, i) => { e.visible = true; e.position.set(-0.15 + i * 0.25, 0, -6.8 - i * 1.2); e.rotation.y = (i % 2 ? -0.2 : 0.2); });
+      },
+      tick(t, p) {
+        memWarm.intensity = lerp(0, 3.2, ease(p)); // understanding: the light softens
+        camPath(cam, V3(2.7, 1.5, -3.4), V3(1.5, 1.35, -4.6), V3(-0.2, 1.2, -6.6), p);
+      },
+    },
+    { // 8.4 — slow orbit: the understanding settles in
+      dur: 6, set: 'room', cue: 'quiet',
+      caption: 'He mirrored my grandfather\u2019s actions \u2014 and those of other indigenous men impacted by the intergenerational trauma caused by our racist society.',
+      enter() { hideActors(); kneelBoy('resolve'); },
+      tick(t, p) {
+        dimRoom();
+        const a = lerp(-0.6, 0.55, ease(p)), r = 1.5;
+        cam.position.set(-1.45 + Math.sin(a) * r, 1.32, -2.0 + Math.cos(a) * r);
+        cam.lookAt(-1.45, 1.12, -2.0);
       },
     },
     { // 8 — break the cycle
