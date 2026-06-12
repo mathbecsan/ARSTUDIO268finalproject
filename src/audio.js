@@ -6,14 +6,31 @@ export class Soundscape {
     this.ctx = null;
     this.master = null;
     this.layers = {}; // name -> { nodes:[], gain }
+    this.muted = false;
+    this.baseVolume = 0.55;
   }
 
   init() {
     if (this.ctx) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.55;
+    this.master.gain.value = this.muted ? 0 : this.baseVolume;
     this.master.connect(this.ctx.destination);
+  }
+
+  // Mute / unmute the entire soundscape with a short fade (no clicks).
+  setMuted(m) {
+    this.muted = m;
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setValueAtTime(this.master.gain.value, now);
+    this.master.gain.linearRampToValueAtTime(m ? 0 : this.baseVolume, now + 0.35);
+  }
+
+  toggleMute() {
+    this.setMuted(!this.muted);
+    return this.muted;
   }
 
   _noiseBuffer(seconds = 2) {

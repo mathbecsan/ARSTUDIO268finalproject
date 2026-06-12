@@ -81,6 +81,19 @@
   }
   #finale-text p.visible { opacity: 1; }
   #finale-text .final-quechua { color: var(--gold); margin-top: 1.6rem; font-weight: bold; }
+
+  #mute-btn {
+    position: fixed; top: 22px; left: 22px; z-index: 30;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(15,17,22,0.55); border: 1px solid rgba(240,230,210,0.18);
+    color: #e8dcc0; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, opacity 0.6s ease;
+    opacity: 0;
+  }
+  #mute-btn.ready { opacity: 0.75; }
+  #mute-btn:hover { opacity: 1; background: rgba(201,162,39,0.22); border-color: rgba(201,162,39,0.5); }
+  #mute-btn.muted { color: #8a6f4a; }
 </style>
 </head>
 <body>
@@ -109,6 +122,13 @@
     <p style="margin-top: 1.6rem; color: #555; font-size: 0.8rem; letter-spacing: 0.15em;">or press ESC to return to the room</p>
   </div>
   <div id="fade"></div>
+
+  <button id="mute-btn" aria-label="Toggle sound" title="Toggle sound (M)">
+    <svg id="mute-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+    </svg>
+  </button>
 
   <script type="module" src="/src/main.js"></script>
 </body>

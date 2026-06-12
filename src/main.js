@@ -2,6 +2,11 @@
 // An interactive 3D environment in three universes.
 import * as THREE from 'three';
 import gsap from 'gsap';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildRoom, buildSilence, buildBreak, buildReturn, buildFinale, buildAfterall } from './worlds.js';
 import { Soundscape } from './audio.js';
 import { WORDS } from './words.js';
@@ -33,10 +38,62 @@ const EYE = 1.65;
 const ambient = new THREE.AmbientLight(0xffffff, 0.3);
 scene.add(ambient);
 
+// ---------------------------------------------------------------------------
+// Cinematic post-processing — Style DNA: handcrafted Andean magical realism,
+// oil-lamp warmth and starlight, lit like a moving woodcut.
+//   RenderPass → Bloom (glow on lamps/words/portals) → Grain+Vignette → Output
+// ---------------------------------------------------------------------------
+const FilmGrainVignetteShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uTime: { value: 0 },
+    uGrain: { value: 0.055 },
+    uVignette: { value: 0.62 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uTime, uGrain, uVignette;
+    varying vec2 vUv;
+    float rand(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec4 color = texture2D(tDiffuse, vUv);
+      // organic film grain (animated)
+      float g = (rand(vUv + fract(uTime)) - 0.5) * uGrain;
+      color.rgb += g;
+      // soft cinematic vignette
+      float d = length(vUv - 0.5);
+      color.rgb *= 1.0 - smoothstep(0.32, 0.82, d) * uVignette;
+      // gentle warm lift in highlights, cool in shadows (teal-orange grade)
+      float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+      color.rgb += vec3(0.018, 0.006, -0.012) * (lum - 0.4);
+      gl_FragColor = color;
+    }
+  `,
+};
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.55, // strength
+  0.6,  // radius
+  0.82  // threshold — only bright emissives bloom
+);
+composer.addPass(bloomPass);
+const filmPass = new ShaderPass(FilmGrainVignetteShader);
+composer.addPass(filmPass);
+composer.addPass(new OutputPass());
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ---------------------------------------------------------------------------
@@ -202,6 +259,20 @@ async function switchWorld(name) {
 
   currentWorld = world;
   currentName = name;
+
+  // per-world cinematic grade — bloom strength & grain shape the mood
+  const grade = {
+    room:    { bloom: 0.5,  grain: 0.06,  vig: 0.7 },
+    silence: { bloom: 0.25, grain: 0.085, vig: 0.78 }, // flat, cold, heavy vignette
+    break:   { bloom: 0.9,  grain: 0.11,  vig: 0.6 },  // electric glow, noisy
+    return:  { bloom: 0.7,  grain: 0.04,  vig: 0.5 },  // warm, clean, luminous
+    finale:  { bloom: 1.0,  grain: 0.05,  vig: 0.55 }, // radiant constellations
+    afterall:{ bloom: 0.65, grain: 0.07,  vig: 0.68 },
+  }[name] || { bloom: 0.55, grain: 0.055, vig: 0.62 };
+  gsap.to(bloomPass, { strength: grade.bloom, duration: 2.5, ease: 'power2.out' });
+  gsap.to(filmPass.uniforms.uGrain, { value: grade.grain, duration: 2.5 });
+  gsap.to(filmPass.uniforms.uVignette, { value: grade.vig, duration: 2.5 });
+
   await fadeTo(false);
 
   // per-world entry narration + sound
@@ -416,10 +487,35 @@ function runAftermall() {
 }
 
 // ---------------------------------------------------------------------------
+// Sound toggle (button + M key)
+// ---------------------------------------------------------------------------
+const muteBtn = $('mute-btn');
+const ICON_ON = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>`;
+const ICON_OFF = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
+
+function applyMuteUI() {
+  const muted = sound.muted;
+  muteBtn.classList.toggle('muted', muted);
+  $('mute-icon').innerHTML = muted ? ICON_OFF : ICON_ON;
+  muteBtn.title = muted ? 'Sound off (M)' : 'Sound on (M)';
+}
+function toggleSound() {
+  sound.init();
+  sound.toggleMute();
+  applyMuteUI();
+}
+muteBtn.addEventListener('click', e => { e.stopPropagation(); toggleSound(); });
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyM') toggleSound();
+});
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 $('title-screen').addEventListener('click', async () => {
   sound.init(); // user gesture unlocks audio
+  applyMuteUI();
+  muteBtn.classList.add('ready');
   $('title-screen').classList.add('hidden');
   setTimeout(() => $('title-screen').remove(), 1600);
   player.enabled = true;
@@ -433,6 +529,7 @@ function loop() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (currentWorld) currentWorld.update(dt);
   movePlayer(dt);
-  renderer.render(scene, camera);
+  filmPass.uniforms.uTime.value = clock.elapsedTime;
+  composer.render();
 }
 loop();
