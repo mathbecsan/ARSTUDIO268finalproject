@@ -206,4 +206,58 @@ export class Soundscape {
       this.layers['finale' + i] = { nodes: [o], gain: eg };
     });
   }
+
+  // The Aftermath — mother's emotional journey: warmth → conflict → silence → collapse → redemption
+  startAftermallTheme() {
+    this.init();
+    const g = this.ctx.createGain(); g.gain.value = 0; g.connect(this.master);
+    const nodes = [];
+
+    // Warm opening pad (minor 7th, A minor: A, C, E, G)
+    [220, 261.63, 329.63, 392].forEach(freq => {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine'; o.frequency.value = freq;
+      const og = this.ctx.createGain(); og.gain.value = 0.08;
+      o.connect(og).connect(g); o.start(); nodes.push(o);
+    });
+
+    const layer = { nodes, gain: g };
+
+    // Pulse through emotional beats
+    let state = 0; // 0=opening, 1=conflict, 2=silence, 3=collapse, 4=redemption
+    let beatTimer = 0;
+    layer.interval = setInterval(() => {
+      beatTimer += 0.5;
+      // Shot transitions every 8-10 seconds average
+      if (beatTimer > 8 + Math.random() * 2) {
+        state = (state + 1) % 5;
+        beatTimer = 0;
+        // Adjust color per state
+        if (state === 1) {
+          // Conflict: add dissonant bass rumble
+          const b = this.ctx.createOscillator();
+          b.type = 'sine'; b.frequency.value = 55;
+          const bg = this.ctx.createGain(); bg.gain.value = 0.12;
+          b.connect(bg).connect(g); b.start(); nodes.push(b);
+        } else if (state === 2) {
+          // Silence: fade out completely
+          this._fadeLayer(layer, 0.01, 2);
+        } else if (state === 3) {
+          // Collapse: chaotic high frequencies
+          for (let i = 0; i < 3; i++) {
+            const h = this.ctx.createOscillator();
+            h.type = 'square'; h.frequency.value = 800 + Math.random() * 2000;
+            const hg = this.ctx.createGain(); hg.gain.value = 0.05;
+            h.connect(hg).connect(g); h.start(); nodes.push(h);
+          }
+        } else if (state === 4) {
+          // Redemption: warm pad returns + choir-like overtones
+          this._fadeLayer(layer, 0.4, 3);
+        }
+      }
+    }, 500);
+
+    this.layers.afterall = layer;
+    this._fadeLayer(layer, 0.3, 2);
+  }
 }

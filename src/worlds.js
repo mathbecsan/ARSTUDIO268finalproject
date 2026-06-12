@@ -559,6 +559,54 @@ export function buildReturn(events) {
 }
 
 // ---------------------------------------------------------------------------
+// UNIVERSE 4 — THE AFTERMATH. The mother's grief journey transformed into
+// redemption. A cinematic 5-shot sequence: the beginning → conflict → the
+// moment of non-intervention → multiverse collapse → transformation.
+// ---------------------------------------------------------------------------
+
+export function buildAfterall(events) {
+  const group = new THREE.Group();
+  const interactables = [];
+  const updaters = [];
+
+  group.add(ground(120, 0x0a0810));
+  group.add(mountainRing(55, 18, 0x0a0810, 1.6));
+
+  // For MVP: the cinematic is a non-interactive sequence played as a looping state.
+  // Each "shot" is represented by a simple scene description + procedural audio.
+  const shots = [
+    { duration: 7, title: 'SHOT 1 — The Beginning', audioKey: 'afterallShot1' },
+    { duration: 8, title: 'SHOT 2 — Conflict', audioKey: 'afterallShot2' },
+    { duration: 8, title: 'SHOT 3 — The Moment', audioKey: 'afterallShot3' },
+    { duration: 10, title: 'SHOT 4 — Collapse', audioKey: 'afterallShot4' },
+    { duration: 12, title: 'SHOT 5 — Return', audioKey: 'afterallShot5' },
+  ];
+
+  let currentShot = 0;
+  let shotTimer = 0;
+  let audioStarted = false;
+
+  updaters.push(dt => {
+    shotTimer += dt;
+    if (shotTimer > shots[currentShot].duration) {
+      currentShot = (currentShot + 1) % shots.length;
+      shotTimer = 0;
+      events.emit('shotChanged', currentShot);
+    }
+  });
+
+  return {
+    group, interactables,
+    update: dt => updaters.forEach(u => u(dt)),
+    playerStart: new THREE.Vector3(0, 1.65, 6),
+    bounds: { minX: -40, maxX: 40, minZ: -40, maxZ: 20 },
+    fog: new THREE.Fog(0x0a0810, 25, 120),
+    background: new THREE.Color(0x0a0810),
+    ambient: 0.15,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // FINALE — words become constellations in an Andean night sky.
 // ---------------------------------------------------------------------------
 

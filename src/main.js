@@ -2,7 +2,7 @@
 // An interactive 3D environment in three universes.
 import * as THREE from 'three';
 import gsap from 'gsap';
-import { buildRoom, buildSilence, buildBreak, buildReturn, buildFinale } from './worlds.js';
+import { buildRoom, buildSilence, buildBreak, buildReturn, buildFinale, buildAfterall } from './worlds.js';
 import { Soundscape } from './audio.js';
 import { WORDS } from './words.js';
 
@@ -163,6 +163,7 @@ let portalsOpen = false;
 let roomWorld = null; // kept so portal state persists
 const collected = new Set();
 let finaleStarted = false;
+let afterallUnlocked = false;
 
 function fadeTo(black, ms = 1200) {
   return new Promise(res => {
@@ -188,6 +189,7 @@ async function switchWorld(name) {
   else if (name === 'break') world = buildBreak(events);
   else if (name === 'return') world = buildReturn(events);
   else if (name === 'finale') world = buildFinale();
+  else if (name === 'afterall') world = buildAfterall(events);
 
   scene.add(world.group);
   scene.fog = world.fog;
@@ -246,6 +248,14 @@ async function switchWorld(name) {
     trackerEl.classList.remove('visible');
     sound.finaleChord();
     runFinale();
+  } else if (name === 'afterall') {
+    setChapter("THE AFTERMATH — A Mother's Reckoning");
+    setHint('');
+    trackerEl.classList.remove('visible');
+    player.enabled = false;
+    say('A mother remembers. A mother grieves. A mother transforms grief into light.', 7);
+    sound.startAftermallTheme();
+    runAftermall();
   }
 }
 
@@ -368,11 +378,41 @@ function runFinale() {
       if (i === lines.length - 1) {
         setTimeout(() => {
           finaleEl.innerHTML += `<p class="visible" style="margin-top:3rem; font-size:0.85rem; letter-spacing:0.35em; color:#888;">KAWSAY RIPUY — THE JOURNEY OF LIVING</p>`;
+          setTimeout(() => {
+            $('aftermath-unlock').classList.remove('hidden');
+            document.getElementById('enter-aftermath')?.addEventListener('click', () => {
+              afterallUnlocked = true;
+              $('aftermath-unlock').classList.add('hidden');
+              switchWorld('afterall');
+            });
+            document.addEventListener('keydown', e => {
+              if (e.code === 'Escape') {
+                $('aftermath-unlock').classList.add('hidden');
+                switchWorld('room');
+              }
+            }, { once: true });
+          }, 5000);
         }, 5000);
       }
     }, t);
     t += i === 5 ? 3000 : 5200;
   });
+}
+
+function runAftermall() {
+  const totalDuration = 41;
+  let timer = 0;
+  const updateAftermall = () => {
+    timer += 0.016;
+    if (timer > totalDuration) {
+      say('The story ends where it began. A mother watches the stars.', 6);
+      setTimeout(() => setHint('Press R to return to the room'), 500);
+      player.enabled = true;
+      return;
+    }
+    requestAnimationFrame(updateAftermall);
+  };
+  updateAftermall();
 }
 
 // ---------------------------------------------------------------------------
