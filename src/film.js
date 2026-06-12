@@ -196,9 +196,9 @@ export function buildFilm(opts) {
   // ACTORS
   // ---------------------------------------------------------------------
   const boy = createAvatar('return');          // the protagonist
-  const father = createAvatar('silence');      // imposing, military-rigid
+  const father = createAvatar('silence', 'father');      // imposing, military-rigid
   father.scale.set(1.3, 1.18, 1.3);
-  const grandfather = createAvatar('silence'); // the flashback
+  const grandfather = createAvatar('silence', 'grandfather'); // the flashback
   grandfather.scale.set(1.2, 1.1, 1.2);
   const grandma = createAvatar('elder');
   grandma.scale.set(0.92, 0.88, 0.92);

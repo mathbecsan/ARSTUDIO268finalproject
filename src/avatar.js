@@ -197,7 +197,7 @@ function createElder() {
 // THE BOY — curly hair, open plaid flannel, dark tee, jeans, black sneakers.
 // Rendered in full color ('return'), grey ('silence') or wireframe ('break').
 // ---------------------------------------------------------------------------
-export function createAvatar(mode = 'return') {
+export function createAvatar(mode = 'return', variant = 'boy') {
   if (mode === 'elder') return createElder();
 
   const group = new THREE.Group();
@@ -322,9 +322,51 @@ export function createAvatar(mode = 'return') {
   nose.position.set(0, 0.08, 0.13);
   headPivot.add(nose);
 
+  // HAIR & HEADWEAR — each man of the family carries his own silhouette
+  if (variant === 'father') {
+    // military buzz cut: a tight cropped cap, and a heavy mustache
+    const crop = new THREE.Mesh(
+      new THREE.SphereGeometry(0.139, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), hairMat);
+    crop.scale.set(0.94, 0.72, 0.97);
+    crop.position.y = 0.135;
+    headPivot.add(crop);
+    const mustache = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.02, 0.02), hairMat);
+    mustache.position.set(0, 0.045, 0.125);
+    headPivot.add(mustache);
+    // service belt with a square buckle
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.178, 0.178, 0.045, 12),
+      new THREE.MeshStandardMaterial({ color: 0x241c14, roughness: 0.6, flatShading: true }));
+    belt.position.y = 0.09;
+    hips.add(belt);
+    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 0.012),
+      new THREE.MeshStandardMaterial({ color: 0x8a8068, metalness: 0.6, roughness: 0.4 }));
+    buckle.position.set(0, 0.09, 0.175);
+    hips.add(buckle);
+  } else if (variant === 'grandfather') {
+    // balding crown with a side fringe, a full beard, and a wide-brim felt hat
+    const fringe = new THREE.Mesh(
+      new THREE.SphereGeometry(0.138, 14, 10, 0, Math.PI * 2, Math.PI / 3.2, Math.PI / 4.5), hairMat);
+    fringe.scale.set(0.96, 1, 0.98);
+    fringe.position.y = 0.105;
+    headPivot.add(fringe);
+    const beard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.04), hairMat);
+    beard.position.set(0, 0.005, 0.1);
+    headPivot.add(beard);
+    const hatMat = new THREE.MeshStandardMaterial({
+      color: mode === 'silence' ? 0x35373c : 0x4a3526, roughness: 0.85, flatShading: true });
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.215, 0.018, 14), hatMat);
+    brim.position.y = 0.205;
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.125, 0.1, 12), hatMat);
+    crown.position.y = 0.26;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.127, 0.13, 0.025, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1c1813, roughness: 0.8 }));
+    band.position.y = 0.225;
+    headPivot.add(brim, crown, band);
+  }
+
   // CURLY HAIR — a cap of clustered curls over the top and back of the head
   const curls = new THREE.Group();
-  const CURL_N = 60;
+  const CURL_N = variant === 'boy' ? 60 : 0;
   for (let i = 0; i < CURL_N; i++) {
     // golden-angle distribution over the sphere
     const y = 1 - (i + 0.5) / CURL_N * 1.55;       // 1 .. -0.55
@@ -341,7 +383,7 @@ export function createAvatar(mode = 'return') {
     curls.add(curl);
   }
   // fringe — a few curls dropping onto the forehead
-  [[-0.07, 0.2, 0.1], [0.0, 0.215, 0.105], [0.07, 0.2, 0.1], [-0.115, 0.13, 0.06], [0.115, 0.13, 0.06]].forEach(p => {
+  (variant === 'boy' ? [[-0.07, 0.2, 0.1], [0.0, 0.215, 0.105], [0.07, 0.2, 0.1], [-0.115, 0.13, 0.06], [0.115, 0.13, 0.06]] : []).forEach(p => {
     const curl = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.01, 7, 6), hairMat);
     curl.position.set(p[0], p[1], p[2]);
     curls.add(curl);
