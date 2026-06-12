@@ -11,6 +11,7 @@ import { buildRoom, buildSilence, buildBreak, buildReturn, buildFinale, buildAft
 import { Soundscape } from './audio.js';
 import { WORDS } from './words.js';
 import { startTitleScene } from './titleScene.js';
+import { playIntro } from './intro.js';
 
 // Animated Peruvian-sunset backdrop behind the title.
 const stopTitleScene = startTitleScene(document.getElementById('title-canvas'));
@@ -516,15 +517,36 @@ document.addEventListener('keydown', e => {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+// Audio cues for the opening animatic.
+let introTension = false;
+function introCue(name) {
+  if (name === 'tension' && !introTension) { introTension = true; sound.startRoomTension(); }
+  else if (name === 'steps') sound.footsteps(6, 0.5);
+  else if (name === 'knock') setTimeout(() => sound.footsteps(3, 1.0), 900);
+}
+
 $('title-screen').addEventListener('click', async () => {
   sound.init(); // user gesture unlocks audio
   applyMuteUI();
   muteBtn.classList.add('ready');
   $('title-screen').classList.add('hidden');
-  setTimeout(() => { stopTitleScene(); $('title-screen').remove(); }, 1600);
-  player.enabled = true;
-  await switchWorld('room');
-  sound.footsteps(4, 0.8);
+  setTimeout(() => { stopTitleScene(); $('title-screen')?.remove(); }, 1600);
+
+  // Play the cinematic prologue, then enter the room.
+  const introEl = $('intro');
+  introEl.classList.remove('hidden');
+  playIntro({
+    canvas: $('intro-canvas'),
+    captionEl: $('intro-caption'),
+    skipBtn: $('intro-skip'),
+    onCue: introCue,
+    onDone: async () => {
+      player.enabled = true;
+      await switchWorld('room');     // builds the room behind the still-opaque intro
+      introEl.classList.add('hidden'); // fade the prologue away to reveal it
+      sound.footsteps(4, 0.8);
+    },
+  });
 }, { once: true });
 
 const clock = new THREE.Clock();
