@@ -26,11 +26,31 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// Photoreal stills generated via Higgsfield (Nano Banana), preloaded.
+// Scenes fall back to the procedural drawings below if an image isn't ready.
+const IMG = {};
+['01_author', '02_bowed', '03_reach', '04_knock'].forEach(n => {
+  const im = new Image(); im.src = `/prologue/${n}.png`; IMG[n] = im;
+});
+
+// Cover-fit a still over the frame with a slow cinematic Ken Burns push-in/pan.
+function drawPhoto(ctx, img, w, h, p) {
+  if (!img || !img.complete || !img.naturalWidth) return false;
+  const ir = img.naturalWidth / img.naturalHeight, cr = w / h;
+  let dw, dh;
+  if (ir > cr) { dh = h; dw = h * ir; } else { dw = w; dh = w / ir; }
+  const s = 1.05 + p * 0.08; dw *= s; dh *= s;
+  const panX = (p - 0.5) * (dw - w) * 0.22;
+  ctx.drawImage(img, (w - dw) / 2 - panX, (h - dh) / 2, dw, dh);
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Scene painters. Each gets (ctx, w, h, t, p) — t seconds in, p = 0..1.
 // ---------------------------------------------------------------------------
 
 function sceneAuthor(ctx, w, h, t, p) {
+  if (drawPhoto(ctx, IMG['01_author'], w, h, p)) return;
   const g = ctx.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.5, h * 0.75);
   g.addColorStop(0, '#22382a'); g.addColorStop(1, '#080f0a');
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
@@ -78,6 +98,7 @@ function sceneAuthor(ctx, w, h, t, p) {
 }
 
 function sceneBowed(ctx, w, h, t, p) {
+  if (drawPhoto(ctx, IMG['02_bowed'], w, h, p)) return;
   ctx.fillStyle = '#0b0a0d'; ctx.fillRect(0, 0, w, h);
   // warm low practical from upper-left
   const g = ctx.createRadialGradient(w * 0.32, h * 0.2, 0, w * 0.4, h * 0.4, h * 0.8);
@@ -118,6 +139,7 @@ function sceneBowed(ctx, w, h, t, p) {
 }
 
 function sceneReach(ctx, w, h, t, p) {
+  if (drawPhoto(ctx, IMG['03_reach'], w, h, p)) return;
   ctx.fillStyle = '#07060a'; ctx.fillRect(0, 0, w, h);
   // doorway with a sliver of cold light leaking around it
   const dx = w * 0.5, dw = w * 0.36, dh = h * 0.82, dy = h * 0.08;
@@ -157,6 +179,7 @@ function sceneReach(ctx, w, h, t, p) {
 }
 
 function sceneKnock(ctx, w, h, t, p) {
+  if (drawPhoto(ctx, IMG['04_knock'], w, h, p)) return;
   ctx.fillStyle = '#0a0c12'; ctx.fillRect(0, 0, w, h);
   // a deep blue paneled door (matching the reference)
   const dx = w * 0.5, dw = w * 0.5, dh = h * 0.92, dy = h * 0.04;
