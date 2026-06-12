@@ -12,6 +12,7 @@ import { Soundscape } from './audio.js';
 import { WORDS } from './words.js';
 import { startTitleScene } from './titleScene.js';
 import { playIntro } from './intro.js';
+import { buildFilm } from './film.js';
 
 // Animated Peruvian-sunset backdrop behind the title.
 const stopTitleScene = startTitleScene(document.getElementById('title-canvas'));
@@ -125,7 +126,7 @@ function nextSubtitle() {
   clearTimeout(subtitleTimer);
   subtitleTimer = setTimeout(() => {
     subtitleEl.classList.remove('visible');
-    setTimeout(nextSubtitle, 600);
+    subtitleTimer = setTimeout(nextSubtitle, 600);
   }, item.seconds * 1000);
 }
 
@@ -252,6 +253,16 @@ async function switchWorld(name) {
   else if (name === 'return') world = buildReturn(events);
   else if (name === 'finale') world = buildFinale();
   else if (name === 'afterall') world = buildAfterall(events);
+  else if (name === 'film') world = buildFilm({
+    scene, ambient, camera,
+    setCaption: filmCaption,
+    cue: filmCue,
+    onEnd: () => {
+      document.body.classList.remove('film-mode');
+      $('film-skip').style.display = 'none';
+      setTimeout(() => switchWorld('room'), 600);
+    },
+  });
 
   scene.add(world.group);
   scene.fog = world.fog;
@@ -273,6 +284,7 @@ async function switchWorld(name) {
     return:  { bloom: 0.7,  grain: 0.04,  vig: 0.5 },  // warm, clean, luminous
     finale:  { bloom: 1.0,  grain: 0.05,  vig: 0.55 }, // radiant constellations
     afterall:{ bloom: 0.65, grain: 0.07,  vig: 0.68 },
+    film:    { bloom: 0.8,  grain: 0.065, vig: 0.72 }, // full cinematic grade
   }[name] || { bloom: 0.55, grain: 0.055, vig: 0.62 };
   gsap.to(bloomPass, { strength: grade.bloom, duration: 2.5, ease: 'power2.out' });
   gsap.to(filmPass.uniforms.uGrain, { value: grade.grain, duration: 2.5 });
@@ -324,6 +336,15 @@ async function switchWorld(name) {
     trackerEl.classList.remove('visible');
     sound.finaleChord();
     runFinale();
+  } else if (name === 'film') {
+    setChapter('KAWSAY RIPUY — THE FILM');
+    setHint('');
+    trackerEl.classList.remove('visible');
+    player.enabled = false;
+    document.body.classList.add('film-mode');
+    const skip = $('film-skip');
+    skip.style.display = 'block';
+    skip.onclick = () => currentWorld && currentWorld.skip && currentWorld.skip();
   } else if (name === 'afterall') {
     setChapter("THE AFTERMATH — A Mother's Reckoning");
     setHint('');
@@ -519,6 +540,43 @@ document.addEventListener('keydown', e => {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Film mode helpers — direct caption control (bypasses the narration queue)
+// and a score conductor that maps shot cues onto the procedural soundscape.
+// ---------------------------------------------------------------------------
+function filmCaption(text) {
+  subtitleQueue.length = 0;
+  clearTimeout(subtitleTimer);
+  if (!text) { subtitleBusy = false; subtitleEl.classList.remove('visible'); return; }
+  subtitleBusy = true; // the film owns the subtitle element while playing
+  subtitleEl.innerHTML = text;
+  subtitleEl.classList.add('visible');
+}
+
+function filmCue(name) {
+  if (name === 'tension' || name === 'tension_soft') {
+    if (!sound.layers.room) sound.startRoomTension();
+    sound.stopLayer('wind', 1.5); sound.stopLayer('andean', 1.5);
+  } else if (name === 'steps') {
+    sound.footsteps(5, 0.7);
+  } else if (name === 'knock') {
+    sound.footsteps(3, 0.5);
+  } else if (name === 'prayer') {
+    sound.stopLayer('room', 2.5);
+  } else if (name === 'wind') {
+    sound.stopLayer('room', 1.5); sound.stopLayer('andean', 1.5);
+    if (!sound.layers.wind) sound.startColdWind();
+  } else if (name === 'warmth') {
+    sound.stopLayer('room', 1.5); sound.stopLayer('wind', 1.5);
+    if (!sound.layers.andean) sound.startAndeanWarmth();
+  } else if (name === 'chime') {
+    sound.chime(1); setTimeout(() => sound.chime(3), 900); setTimeout(() => sound.chime(5), 1800);
+  } else if (name === 'finale') {
+    sound.stopAll(2);
+    sound.finaleChord();
+  }
+}
+
 // Audio cues for the opening animatic.
 let introTension = false;
 function introCue(name) {
@@ -540,6 +598,17 @@ aftermathShortcut.addEventListener('click', async (e) => {
   $('title-screen').classList.add('hidden');
   setTimeout(() => { stopTitleScene(); $('title-screen')?.remove(); }, 1600);
   await switchWorld('afterall');
+});
+
+// "Watch the Film" — the essay performed as an in-engine animated short.
+$('film-btn').addEventListener('click', async (e) => {
+  e.stopPropagation();
+  sound.init();
+  applyMuteUI();
+  muteBtn.classList.add('ready');
+  $('title-screen').classList.add('hidden');
+  setTimeout(() => { stopTitleScene(); $('title-screen')?.remove(); }, 1600);
+  await switchWorld('film');
 });
 
 $('title-screen').addEventListener('click', async () => {

@@ -125,6 +125,29 @@
   }
   #aftermath-shortcut.show { display: inline-block; }
   #aftermath-shortcut:hover { background: rgba(201,162,39,0.16); color: #fff6e6; }
+
+  #film-btn {
+    display: inline-block; margin-top: 1rem; background: transparent;
+    border: 1px solid rgba(240,230,210,0.4); color: #f0e6d2;
+    padding: 0.55rem 1.5rem; letter-spacing: 0.22em; font-size: 0.72rem;
+    font-family: Helvetica, Arial, sans-serif; cursor: pointer; border-radius: 3px;
+    transition: background 0.25s ease, color 0.25s ease; text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  }
+  #film-btn:hover { background: rgba(240,230,210,0.14); color: #fff; }
+
+  .film-bar { position: fixed; left: 0; right: 0; height: 0; background: #000; z-index: 14; transition: height 0.9s ease; pointer-events: none; }
+  #film-bar-top { top: 0; } #film-bar-bottom { bottom: 0; }
+  body.film-mode #film-bar-top, body.film-mode #film-bar-bottom { height: 11vh; }
+  body.film-mode #subtitle { z-index: 15; bottom: 13vh; }
+  body.film-mode #chapter { z-index: 15; }
+
+  #film-skip {
+    display: none; position: fixed; bottom: 3.5%; right: 5%; z-index: 16;
+    background: rgba(0,0,0,0.35); border: 1px solid rgba(240,230,210,0.28); color: #cbb890;
+    padding: 0.5rem 1.15rem; letter-spacing: 0.22em; font-size: 0.7rem; cursor: pointer;
+    border-radius: 3px; font-family: Helvetica, Arial, sans-serif;
+  }
+  #film-skip:hover { background: rgba(240,230,210,0.14); color: #f0e6d2; }
 </style>
 </head>
 <body>
@@ -140,6 +163,7 @@
     <div class="quechua">Musqusqaykimanta astawan karutaraq chayasaqku.<br/>
       <span style="color:#777; font-size:0.85rem;">"We will get farther than you ever dreamed."</span></div>
     <div class="begin">CLICK TO ENTER</div>
+    <button id="film-btn">✦&nbsp;&nbsp;WATCH THE FILM</button>
     <button id="aftermath-shortcut">▸&nbsp;&nbsp;THE AFTERMATH</button>
   </div>
 
@@ -159,6 +183,10 @@
     <div id="intro-caption"></div>
     <button id="intro-skip">SKIP&nbsp;&nbsp;›</button>
   </div>
+
+  <div id="film-bar-top" class="film-bar"></div>
+  <div id="film-bar-bottom" class="film-bar"></div>
+  <button id="film-skip">SKIP FILM&nbsp;&nbsp;›</button>
 
   <div id="fade"></div>
 

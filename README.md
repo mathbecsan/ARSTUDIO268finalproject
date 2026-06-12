@@ -127,9 +127,20 @@ npm run build    # static exhibition bundle in dist/
 
 ---
 
+## The Film
+
+Click **"✦ Watch the Film"** on the title screen: the entire essay performed as a fully
+animated, in-engine 3D short (~2 min, 16 shots) — animated characters (the boy, father,
+grandfather, grandmother), four sets, dynamic cameras, captions, letterbox, and a
+shot-conducted score. Skippable; ends inside the explorable Room.
+Photoreal Pixar/UE5-grade production prompts for all 16 shots: **[FILM_PRODUCTION.md](FILM_PRODUCTION.md)**.
+
+---
+
 ## Documentation
 
 - **[DESIGN.md](DESIGN.md)** — **Act I** concept: world design, interaction mechanics, technical architecture, exhibition setup, asset recommendations
+- **[FILM_PRODUCTION.md](FILM_PRODUCTION.md)** — **The Film**: 16-shot breakdown of the essay, in-engine machinima (live) + paste-ready photoreal video prompts, plan/credit budget
 - **[AFTERMATH.md](AFTERMATH.md)** — **Act II** concept: the alternate ending, the *Two Hopes* tonal thesis, narrative structure, unlock workflow, implemented systems
 - **[AFTERMATH_PRODUCTION.md](AFTERMATH_PRODUCTION.md)** — Cinematic production pipeline; 5-shot breakdown with locked STYLE DNA; Higgsfield Seedream/Nano Banana + image-to-video prompts; production checklist
 
