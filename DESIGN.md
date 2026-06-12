@@ -1,9 +1,18 @@
 # KAWSAY RIPUY — The Journey of Living
-### Concept & Implementation Plan — Interactive 3D Environment
+### Concept & Implementation Plan — Interactive 3D Environment (ACT I — The Personal Story)
 *ARTSTUDIO 268 · Project 3 (Interactive Environment) + Final Project (Collaborative Exhibition)*
 
 > **Musqusqaykimanta astawan karutaraq chayasaqku.**
 > "We will get farther than you ever dreamed."
+
+---
+
+> **This document covers Act I — the personal story: the multiverse of *living*, where hope
+> points forward despite hardship.** Its companion, **[AFTERMATH.md](AFTERMATH.md)**, covers
+> Act II — the alternate ending where the protagonist does not survive, told through the grief
+> of those left behind, where hope exists but does *not* heal the loss of the past. Read the two
+> together: Act I is the journey of living; Act II is what living costs everyone else when that
+> journey ends too soon.
 
 ---
 

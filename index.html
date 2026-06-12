@@ -115,6 +115,16 @@
   #mute-btn.ready { opacity: 0.75; }
   #mute-btn:hover { opacity: 1; background: rgba(201,162,39,0.22); border-color: rgba(201,162,39,0.5); }
   #mute-btn.muted { color: #8a6f4a; }
+
+  #aftermath-shortcut {
+    display: none; margin-top: 1.8rem; background: transparent;
+    border: 1px solid rgba(201,162,39,0.5); color: #ffd27a;
+    padding: 0.55rem 1.5rem; letter-spacing: 0.22em; font-size: 0.72rem;
+    font-family: Helvetica, Arial, sans-serif; cursor: pointer; border-radius: 3px;
+    transition: background 0.25s ease, color 0.25s ease; text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  }
+  #aftermath-shortcut.show { display: inline-block; }
+  #aftermath-shortcut:hover { background: rgba(201,162,39,0.16); color: #fff6e6; }
 </style>
 </head>
 <body>
@@ -130,6 +140,7 @@
     <div class="quechua">Musqusqaykimanta astawan karutaraq chayasaqku.<br/>
       <span style="color:#777; font-size:0.85rem;">"We will get farther than you ever dreamed."</span></div>
     <div class="begin">CLICK TO ENTER</div>
+    <button id="aftermath-shortcut">▸&nbsp;&nbsp;THE AFTERMATH</button>
   </div>
 
   <div id="chapter"></div>

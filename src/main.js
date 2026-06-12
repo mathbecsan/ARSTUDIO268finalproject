@@ -454,6 +454,8 @@ function runFinale() {
       if (i === lines.length - 1) {
         setTimeout(() => {
           finaleEl.innerHTML += `<p class="visible" style="margin-top:3rem; font-size:0.85rem; letter-spacing:0.35em; color:#888;">KAWSAY RIPUY — THE JOURNEY OF LIVING</p>`;
+          // Act I complete — remember it so the title-screen shortcut appears next time.
+          try { localStorage.setItem('kawsay_aftermath_unlocked', '1'); } catch (e) {}
           setTimeout(() => {
             $('aftermath-unlock').classList.remove('hidden');
             document.getElementById('enter-aftermath')?.addEventListener('click', () => {
@@ -524,6 +526,21 @@ function introCue(name) {
   else if (name === 'steps') sound.footsteps(6, 0.5);
   else if (name === 'knock') setTimeout(() => sound.footsteps(3, 1.0), 900);
 }
+
+// Persistent Act II shortcut — appears on the title screen once Act I is finished.
+const AFTERMATH_KEY = 'kawsay_aftermath_unlocked';
+const aftermathShortcut = $('aftermath-shortcut');
+if (localStorage.getItem(AFTERMATH_KEY) === '1') aftermathShortcut.classList.add('show');
+aftermathShortcut.addEventListener('click', async (e) => {
+  e.stopPropagation(); // don't also trigger the full Act I entry
+  sound.init();
+  applyMuteUI();
+  muteBtn.classList.add('ready');
+  afterallUnlocked = true;
+  $('title-screen').classList.add('hidden');
+  setTimeout(() => { stopTitleScene(); $('title-screen')?.remove(); }, 1600);
+  await switchWorld('afterall');
+});
 
 $('title-screen').addEventListener('click', async () => {
   sound.init(); // user gesture unlocks audio

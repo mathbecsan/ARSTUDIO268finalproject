@@ -56,21 +56,45 @@ A meditation on parental grief, resilience, and the futures that exist in memory
 
 ## ACT II — The Aftermath (Unlockable)
 
-A cinematic 5-shot sequence: **A Mother's Reckoning** (inspired by "After All" by Goldrich & Heisler).
+*A Mother's Reckoning* — a cinematic 5-movement animatic (inspired by "After All" by Zina Goldrich & Marcy Heisler).
 
-**Accessible:** Post-finale unlock button OR unlockable button at the game start (after completing Act I).
+> **The alternate ending.** Where Act I asks what it took for the protagonist to *live*,
+> The Aftermath is the universe where he doesn't make it — the timeline that ends in suicide —
+> told entirely from the side of **the people who survive him**: his mother first, then the
+> community, and the grief his loss leaves in a world that continues without him.
 
-### The Five Shots
+⚠️ **Content note:** depicts suicide and grief (without graphic depiction). If you're
+struggling: **US** call/text **988** · **Perú** **Línea 113, opción 5** · anywhere
+[findahelpline.com](https://findahelpline.com).
 
-1. **The Beginning** — Warmth, newborn, a mother's perfect love crystallized
-2. **Conflict** — The house darkens; violence seeps through windows; isolation deepens
-3. **The Moment** — Outside a bedroom door; a choice not made; forgiveness for silence
-4. **Collapse** — Every possible future dies at once; the multiverse fractures
-5. **Transformation** — Grief becomes light; the mother transforms sorrow into community work and advocacy
+### The Two Hopes — why the acts differ in tone
 
-**Total runtime:** ~41 seconds  
-**Audio:** Procedural emotional soundscape (warm → conflict → silence → collapse → redemption)  
-**Production-ready:** Full cinematic shot prompts with Higgsfield Seedream + image-to-video format (see [AFTERMATH_PRODUCTION.md](AFTERMATH_PRODUCTION.md))
+|  | **Act I — Personal Story** | **Act II — The Aftermath** |
+|---|---|---|
+| **Hope** | Hope *about the future*, despite hardship | Hope that *does not heal* the pain of the past |
+| **Outcome** | He survives; transformation is possible | He is gone; the loss is permanent |
+| **Resolution** | Redemption *forward* | Redemption *without erasure* — grief and purpose coexist |
+| **Voice** | First person; he is the guide | He is absent; the mother is the center |
+
+Act I says *the future can be better than the past.* Act II says *the future can hold meaning —
+and the loss still happened, and still hurts.* The mother turns sorrow into mental-health
+advocacy and the breaking of the cycle, but it is explicitly **not a cure**. The empty chair
+stays empty.
+
+### The Five Movements
+
+1. **The Beginning** — A newborn; a mother's love before any expectation, disappointment, or grief
+2. **Conflict** — The house darkens; violence seeps through walls and windows; isolation deepens
+3. **The Moment** — Outside his bedroom door, the night she almost knocked: the intervention not made
+4. **Collapse** — Not one life ending but *thousands of futures* dying at once, star by star
+5. **Transformation** — Years later: grief turned into advocacy, support groups, protection for other sons — hope that does not undo the loss
+
+**Accessible:** post-finale **"Experience the Aftermath"** button, plus a persistent
+title-screen shortcut once Act I is completed (remembered in the browser).
+**Runtime:** ~41s · **Audio:** procedural grief-arc soundscape (warmth → conflict → silence → collapse → redemption).
+
+📖 **Full treatment:** **[AFTERMATH.md](AFTERMATH.md)** (concept, tonal thesis, systems) ·
+**[AFTERMATH_PRODUCTION.md](AFTERMATH_PRODUCTION.md)** (photoreal shot prompts / video pipeline)
 
 ---
 
@@ -105,8 +129,9 @@ npm run build    # static exhibition bundle in dist/
 
 ## Documentation
 
-- **[DESIGN.md](DESIGN.md)** — Full concept, world design, interaction mechanics, technical architecture, exhibition setup, asset recommendations
-- **[AFTERMATH_PRODUCTION.md](AFTERMATH_PRODUCTION.md)** — Cinematic production pipeline; 5-shot breakdown with locked STYLE DNA; Higgsfield Seedream + image-to-video prompts; production checklist
+- **[DESIGN.md](DESIGN.md)** — **Act I** concept: world design, interaction mechanics, technical architecture, exhibition setup, asset recommendations
+- **[AFTERMATH.md](AFTERMATH.md)** — **Act II** concept: the alternate ending, the *Two Hopes* tonal thesis, narrative structure, unlock workflow, implemented systems
+- **[AFTERMATH_PRODUCTION.md](AFTERMATH_PRODUCTION.md)** — Cinematic production pipeline; 5-shot breakdown with locked STYLE DNA; Higgsfield Seedream/Nano Banana + image-to-video prompts; production checklist
 
 ---
 
@@ -123,8 +148,9 @@ The project is gallery-ready:
 ## Project Status
 
 ✅ **Core experience:** Complete and playable  
-✅ **Act I:** Room + 3 universes + finale sequence  
-✅ **Act II framework:** Aftermath world builder + unlock UI + procedural audio system  
-🔄 **Act II cinematic:** Awaiting generated images from Higgsfield (infrastructure ready; see AFTERMATH_PRODUCTION.md)
+✅ **Act I:** Cinematic prologue + Room + 3 universes + finale sequence  
+✅ **Cinematic prologue:** 7-shot opening animatic — **4 shots now play real photoreal stills** generated via the Higgsfield pipeline (`public/prologue/`); 3 remain stylized illustrations  
+✅ **Act II (The Aftermath):** Unlockable 5-movement animatic — world builder + unlock UI + persistent start-screen shortcut + procedural grief-arc audio, all live in-engine  
+🔄 **Act II photoreal pass (optional):** In-engine animatic plays now; photoreal footage can be dropped in via the validated Higgsfield pipeline (see AFTERMATH_PRODUCTION.md)
 
-The entire narrative, interaction system, and technical foundation is live and functional. The Aftermath sequence is structured and ready for cinematic asset integration.
+The entire narrative, interaction system, and technical foundation is live and functional across both acts. The Higgsfield photoreal pipeline is proven (the prologue already runs generated footage) and ready to extend to the Aftermath shots when desired.
