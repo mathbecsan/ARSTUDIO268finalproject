@@ -569,6 +569,10 @@ function filmCue(name) {
     sound.footsteps(3, 0.5);
   } else if (name === 'prayer') {
     sound.stopLayer('room', 2.5);
+  } else if (name === 'quiet') {
+    sound.stopLayer('room', 1.5); sound.stopLayer('wind', 1.5); sound.stopLayer('andean', 1.5);
+  } else if (name === 'hope') {
+    sound.chime(2);
   } else if (name === 'wind') {
     sound.stopLayer('room', 1.5); sound.stopLayer('andean', 1.5);
     if (!sound.layers.wind) sound.startColdWind();

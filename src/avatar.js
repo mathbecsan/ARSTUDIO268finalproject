@@ -10,7 +10,11 @@
 //
 // The avatar exposes userData.setAction(name) for film direction:
 //   idle | still | walk | dance | write | freeze | fear
+//   exhausted | clear | kneel | pray | prayOpen   (the prayer arc)
 import * as THREE from 'three';
+
+const lerpN = (a, b, k) => a + (b - a) * k;
+const easeN = k => k * k * (3 - 2 * k);
 
 const SKIN = 0xc59a6f;
 const SKIN_SHADOW = 0x96704c;
@@ -437,6 +441,25 @@ export function createAvatar(mode = 'return') {
     torso.scale.set(1, 1, 1);
     group.rotation.z = 0;
   }
+  // kneeling on the wooden floor — thighs near vertical, feet folded back
+  function kneelPose() {
+    hips.position.y = 0.5;
+    hips.rotation.set(0, 0, 0);
+    legL.thigh.rotation.set(-0.25, 0, -0.1);
+    legR.thigh.rotation.set(-0.2, 0, 0.1);
+    legL.shin.rotation.set(1.5, 0, 0);
+    legR.shin.rotation.set(1.5, 0, 0);
+    shoulders.rotation.set(0.1, 0, 0);
+    armL.upper.rotation.set(-0.2, 0, 0.15);
+    armR.upper.rotation.set(-0.2, 0, -0.15);
+    armL.fore.rotation.set(0.25, 0, 0);
+    armR.fore.rotation.set(0.25, 0, 0);
+    armL.hand.scale.set(1, 1.2, 0.7);
+    armR.hand.scale.set(1, 1.2, 0.7);
+    headPivot.rotation.set(0.25, 0, 0);
+    torso.scale.set(1, 1, 1);
+    group.rotation.z = 0;
+  }
   function standingReset() {
     hips.position.y = 0.92;
     hips.rotation.set(0, 0, 0);
@@ -523,6 +546,81 @@ export function createAvatar(mode = 'return') {
       const sw = at % 3.4;
       neck.scale.y = sw > 2.2 && sw < 2.5 ? 1 + Math.sin((sw - 2.2) / 0.3 * Math.PI) * 0.18 : 1;
 
+    } else if (a === 'exhausted') {
+      // Beat 1-2: staring down at the lesson plans, processing, a long exhale
+      seatedPose();
+      resetEyes();
+      headPivot.rotation.x = 0.58 + Math.sin(t * 0.7) * 0.012;
+      shoulders.rotation.x = 0.32;                            // slumped
+      let breath = Math.sin(t * 0.8) * 0.014;
+      const cyc = t % 7;
+      if (cyc > 5) breath -= Math.sin((cyc - 5) / 2 * Math.PI) * 0.025; // the exhale
+      torso.scale.set(1 + breath, 1 + breath * 0.5, 1 + breath);
+
+    } else if (a === 'clear') {
+      // Beat 3: pushing the papers aside — not carelessly. gently.
+      seatedPose();
+      resetEyes();
+      headPivot.rotation.x = 0.5;
+      const s = at < 0.7 ? 0 : easeN(Math.min(1, (at - 0.7) / 2.6));
+      armR.upper.rotation.x = -1.45;
+      armR.upper.rotation.y = lerpN(-0.08, -0.9, s);          // the slow sweep
+      armR.fore.rotation.x = 0.3;
+      shoulders.rotation.y = -0.12 * s;
+      const breath = Math.sin(t * 1.0) * 0.012;
+      torso.scale.set(1 + breath, 1 + breath * 0.4, 1 + breath);
+
+    } else if (a === 'kneel') {
+      // Beat 4: sliding off the chair; the knees touch the wooden floor
+      kneelPose();
+      resetEyes();
+      const d = easeN(Math.min(1, at / 1.4));                 // the descent
+      hips.position.y = lerpN(0.78, 0.5, d);
+      legL.thigh.rotation.x = lerpN(-1.1, -0.25, d);
+      legR.thigh.rotation.x = lerpN(-1.05, -0.2, d);
+      legL.shin.rotation.x = lerpN(0.7, 1.5, d);
+      legR.shin.rotation.x = lerpN(0.7, 1.5, d);
+      headPivot.rotation.x = 0.3;
+      const breath = Math.sin(t * 1.1) * 0.012;
+      torso.scale.set(1 + breath, 1 + breath * 0.4, 1 + breath);
+
+    } else if (a === 'pray') {
+      // Beats 5-8: hesitation — fingers interlock — head lowers — eyes close.
+      // Later (at > 8) the clasped hands tighten in slow waves.
+      kneelPose();
+      const c = at < 0.7 ? 0 : easeN(Math.min(1, (at - 0.7) / 2.0));
+      armL.upper.rotation.set(lerpN(-0.2, -1.2, c), 0, lerpN(0.15, 0.5, c));
+      armR.upper.rotation.set(lerpN(-0.2, -1.25, c), 0, lerpN(-0.15, -0.5, c));
+      armL.fore.rotation.x = lerpN(0.25, 0.9, c);
+      armR.fore.rotation.x = lerpN(0.25, 0.95, c);
+      const h = at < 4.5 ? 0 : easeN(Math.min(1, (at - 4.5) / 2.0));
+      headPivot.rotation.x = lerpN(0.25, 0.6, h);
+      if (at > 8) {
+        const sq = 0.5 + 0.5 * Math.sin((at - 8) * 0.7);
+        armL.hand.scale.set(1 - 0.1 * sq, 1.2, 0.7 - 0.05 * sq);
+        armR.hand.scale.set(1 - 0.1 * sq, 1.2, 0.7 - 0.05 * sq);
+      }
+      const breath = Math.sin(t * 0.9) * 0.016;
+      torso.scale.set(1 + breath, 1 + breath * 0.5, 1 + breath);
+
+    } else if (a === 'prayOpen') {
+      // the prayer ends: eyes open, the room is unchanged, doubt — then faith
+      kneelPose();
+      armL.upper.rotation.set(-1.2, 0, 0.5);
+      armR.upper.rotation.set(-1.25, 0, -0.5);
+      armL.fore.rotation.x = 0.9;
+      armR.fore.rotation.x = 0.95;
+      let hx = 0.6, hy = 0;
+      if (at < 1.5) hx = lerpN(0.6, 0.34, easeN(at / 1.5));                  // head lifts
+      else if (at < 4.5) { hx = 0.34; hy = Math.sin((at - 1.5) * 1.1) * 0.16 * (1 - (at - 1.5) / 3.2); } // searches the room
+      else if (at < 6.2) hx = lerpN(0.34, 0.46, easeN((at - 4.5) / 1.7));    // disappointment
+      else hx = lerpN(0.46, 0.3, easeN(Math.min(1, (at - 6.2) / 2.2)));      // quiet acceptance
+      headPivot.rotation.x = hx;
+      headPivot.rotation.y = hy;
+      let breath = Math.sin(t * 0.9) * 0.014;
+      if (at > 6.2 && at < 8.2) breath += Math.sin((at - 6.2) / 2 * Math.PI) * 0.02; // one deep breath
+      torso.scale.set(1 + breath, 1 + breath * 0.5, 1 + breath);
+
     } else if (a === 'still') {
       standingReset();
       resetEyes();
@@ -585,11 +683,22 @@ export function createAvatar(mode = 'return') {
       legR.thigh.rotation.x = -Math.sin(t * 1.8) * 0.05;
     }
 
-    // occasional blink (all living actions)
+    // eyes: held shut while praying, a slow reopening, heavy-lidded when
+    // exhausted, otherwise the occasional blink
     state.blink -= dt;
     if (state.blink < 0) state.blink = 2.5 + Math.random() * 3;
-    const blinking = state.blink < 0.12;
-    eyeL.scale.y = eyeR.scale.y = blinking ? 0.15 : 1;
+    let eyeY = 1;
+    if (a === 'pray' && state.at > 6.5) {
+      eyeY = 0.12;                                            // eyes closed
+    } else if (a === 'prayOpen') {
+      eyeY = lerpN(0.12, 1, easeN(Math.min(1, state.at / 1.6)));
+      if (state.at > 2.5 && state.blink < 0.18) eyeY = 0.15;  // slow blinks after
+    } else if (a === 'exhausted') {
+      if (state.blink < 0.3) eyeY = 0.18;                     // heavy, tired blinks
+    } else if (state.blink < 0.12) {
+      eyeY = 0.15;
+    }
+    eyeL.scale.y = eyeR.scale.y = eyeY;
   };
 
   return group;

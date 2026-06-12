@@ -236,6 +236,26 @@ export function buildFilm(opts) {
     place(boy, -1.65, -2.25, Math.PI + 0.26);
     boy.userData.setAction(action);
   }
+  // the boy kneeling on the wooden floor beside the stool, facing the lamp
+  function kneelBoy(action = 'kneel') {
+    place(boy, -1.45, -2.0, Math.PI + 0.26);
+    boy.userData.setAction(action);
+  }
+
+  // the lesson plans he gently pushes aside before praying
+  const prayPapers = [];
+  [[-1.95, -2.72, 0.2], [-1.82, -2.66, -0.35], [-2.04, -2.79, 0.55]].forEach(([px, pz, rz], i) => {
+    const pp = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.2, 0.27),
+      new THREE.MeshStandardMaterial({ color: 0xe8e0cc, roughness: 1, side: THREE.DoubleSide })
+    );
+    pp.rotation.x = -Math.PI / 2;
+    pp.rotation.z = rz;
+    pp.position.set(px, 0.882 + i * 0.002, pz);
+    pp.userData = { x0: px, z0: pz, r0: rz };
+    s1.add(pp);
+    prayPapers.push(pp);
+  });
 
   const S1_LINE = 'His clomp signaled that he would soon enter my room.';
   const SHOTS = [
@@ -350,12 +370,130 @@ export function buildFilm(opts) {
         camPath(cam, V3(-1.65, 1.5, 0.4), V3(-1.65, 1.45, -0.6), V3(-1.65, 1.5, -2.25), p);
       },
     },
-    { // 6 — the prayer
-      dur: 7, set: 'room', cue: 'prayer',
-      caption: 'Like never before, I prayed with sincerity — and asked for my father to be forgiven. I had nothing left but faith.',
-      enter() { hideActors(); place(boy, 0, -1.5, Math.PI); boy.userData.setAction('still'); boy.scale.set(1, 0.82, 1); },
+    // =====================================================================
+    // SCENES 4-6 — THE PRAYER. Fear → reflection → prayer → forgiveness →
+    // doubt → faith. Not routine prayer: the first time he truly has
+    // nowhere else to go.
+    // =====================================================================
+    { // 4.1 — wide: a small child alone in an enormous room
+      dur: 6, set: 'room', cue: 'prayer',
+      caption: 'Like never before, I prayed to God with sincerity.',
+      enter() { hideActors(); seatBoy('exhausted'); doorShadow.visible = false; },
       tick(t, p) {
-        camPath(cam, V3(0, 3.0, 0.6), V3(0, 2.2, -0.2), V3(0, 0.9, -1.5), p); // descending overhead — grace
+        dimRoom();
+        camPath(cam, V3(2.6, 2.2, 2.9), V3(2.2, 2.0, 2.4), V3(-1.7, 0.9, -2.6), p);
+      },
+    },
+    { // 4.2 — medium: staring down at the lesson plans, processing
+      dur: 5, set: 'room',
+      caption: 'Like never before, I prayed to God with sincerity.',
+      enter() {},
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-2.5, 1.5, -1.7), V3(-2.35, 1.42, -1.85), V3(-1.6, 1.1, -2.55), p);
+      },
+    },
+    { // 4.3 — close-up: the papers pushed aside. not carelessly. gently.
+      dur: 5, set: 'room',
+      caption: 'Like never before, I prayed to God with sincerity.',
+      enter() { boy.userData.setAction('clear'); },
+      tick(t, p) {
+        dimRoom();
+        // the lesson plans slide along the board with the sweep of his hand
+        const s = ease(Math.min(1, Math.max(0, (t - 0.7) / 2.6)));
+        prayPapers.forEach((pp, i) => {
+          const d = s * (0.2 + i * 0.05);
+          pp.position.x = pp.userData.x0 + 0.955 * d;
+          pp.position.z = pp.userData.z0 - 0.296 * d;
+          pp.rotation.z = pp.userData.r0 + s * (0.3 - i * 0.25);
+        });
+        camPath(cam, V3(-2.35, 1.06, -2.35), V3(-2.2, 1.0, -2.45), V3(-1.85, 0.88, -2.7), p);
+      },
+    },
+    { // 4.4 — low angle: the knees touch the wooden floor
+      dur: 5, set: 'room',
+      caption: 'Like never before, I prayed to God with sincerity.',
+      enter() { kneelBoy('kneel'); },
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-2.65, 0.24, -1.3), V3(-2.5, 0.2, -1.42), V3(-1.5, 0.32, -2.08), p);
+      },
+    },
+    { // 4.5 — extreme close-up: the fingers slowly interlock
+      dur: 5, set: 'room',
+      caption: 'Like never before, I prayed to God with sincerity.',
+      enter() { boy.userData.setAction('pray'); },
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-1.1, 0.85, -2.78), V3(-1.18, 0.8, -2.7), V3(-1.54, 0.7, -2.3), p);
+      },
+    },
+    { // 4.6 — profile: the head lowers. the eyes close.
+      dur: 6, set: 'room',
+      caption: 'Like never before, I prayed to God with sincerity.',
+      enter() {}, // the prayer performance continues uncut
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-0.45, 1.25, -2.3), V3(-0.66, 1.2, -2.26), V3(-1.5, 1.05, -2.02), p);
+      },
+    },
+    { // 5.1 — the clasped hands tighten
+      dur: 5, set: 'room',
+      caption: 'I asked for my father to be forgiven.',
+      enter() {},
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-1.2, 0.78, -2.66), V3(-1.25, 0.75, -2.6), V3(-1.54, 0.68, -2.32), p);
+      },
+    },
+    { // 5.2 — the memory: a tired man, working, struggling, burdened
+      dur: 6, set: 'grey', cue: 'wind',
+      caption: 'I asked for my father to be forgiven.',
+      enter() { hideActors(); place(father, 0, -3.2, Math.PI + 0.3); },
+      tick(t, p) {
+        // walking home, away into the grey
+        father.position.z = -3.2 - t * 0.18;
+        father.position.y = Math.abs(Math.sin(t * 1.6)) * 0.02;
+        camPath(cam, V3(0, 1.5, 0.6), V3(0, 1.45, 0.1), V3(0, 1.4, -3.6), p);
+      },
+    },
+    { // 5.3 — return to the prayer
+      dur: 4, set: 'room', cue: 'quiet',
+      caption: 'I asked for my father to be forgiven.',
+      enter() { hideActors(); kneelBoy('pray'); },
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-0.7, 1.35, -1.5), V3(-0.85, 1.3, -1.65), V3(-1.5, 1.1, -2.05), p);
+      },
+    },
+    { // 6.1 — extreme close-up: the eyes open
+      dur: 5, set: 'room',
+      caption: 'Although I still doubted God would hear my unworthy but honest pleas, I had nothing left but faith.',
+      enter() { boy.userData.setAction('prayOpen'); },
+      tick(t, p) {
+        dimRoom();
+        camPath(cam, V3(-1.7, 1.3, -2.85), V3(-1.66, 1.28, -2.72), V3(-1.45, 1.24, -2.0), p);
+      },
+    },
+    { // 6.2 — POV: the same room. the same silence. no miracle.
+      dur: 5, set: 'room',
+      caption: 'Although I still doubted God would hear my unworthy but honest pleas, I had nothing left but faith.',
+      enter() { boy.visible = false; },
+      tick(t, p) {
+        dimRoom();
+        cam.position.set(-1.45, 1.32, -2.0);
+        const e = ease(Math.min(1, t / 4.2));
+        cam.lookAt(lerp(-1.75, 1.6, e), lerp(0.9, 1.1, e), lerp(-2.75, 3.9, e));
+      },
+    },
+    { // 6.3 — slow push-in: the smallest remaining thread of hope
+      dur: 7, set: 'room',
+      caption: 'Although I still doubted God would hear my unworthy but honest pleas, I had nothing left but faith.',
+      enter() { boy.visible = true; this.hit = false; },
+      tick(t, p) {
+        dimRoom();
+        if (!this.hit && t > 5) { this.hit = true; cue('hope'); }
+        camPath(cam, V3(-1.78, 1.36, -3.05), V3(-1.64, 1.3, -2.62), V3(-1.45, 1.24, -2.0), p);
       },
     },
     { // 7 — the grandfather (flashback)
@@ -459,6 +597,7 @@ export function buildFilm(opts) {
   // DIRECTOR
   // ---------------------------------------------------------------------
   let shotIdx = -1, shotT = 0, done = false;
+  if (import.meta.env.DEV) window.__ff = sec => { shotT += sec; };
 
   function applySet(name) {
     Object.entries(sets).forEach(([k, s]) => { s.group.visible = k === name; });
